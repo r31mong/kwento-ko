@@ -959,7 +959,7 @@ function renderBook() {
 
   document.getElementById('story-title-display').textContent = story.title || 'My Story';
   document.getElementById('story-badges').innerHTML = `
-    <span class="badge badge-blue">${state.character?.type || ''}</span>
+    <span class="badge badge-blue">${escapeHtml(state.character?.type || '')}</span>
     <span class="badge badge-green">${getSelected('lang-pills') || 'English'}</span>
     <span class="badge badge-coral">${getSelected('age-pills') || '4-6'}</span>`;
 
@@ -1479,7 +1479,7 @@ async function loadAdminUsers() {
       <tbody>
         ${data.users.map(u => `<tr>
           <td>${escapeHtml(u.email)}</td>
-          <td><span class="badge badge-${u.tier==='pro'?'blue':u.tier==='business'?'green':'coral'}">${u.is_tester?'🧪 ':''} ${u.tier}</span></td>
+          <td><span class="badge badge-${u.tier==='pro'?'blue':u.tier==='business'?'green':'coral'}">${u.is_tester?'🧪 ':''} ${escapeHtml(u.tier)}</span></td>
           <td style="font-size:12px;">${new Date(u.created_at).toLocaleDateString('en-PH')}</td>
           <td>
             <button class="copy-btn" onclick="upgradeTier(${u.id},'pro')">→ Pro</button>
@@ -1516,8 +1516,8 @@ async function loadAdminPromo() {
       <tbody>
         ${data.codes.map(c => `<tr>
           <td><strong>${escapeHtml(c.code)}</strong></td>
-          <td>${c.discount_type === 'percent' ? c.discount_value + '%' : '₱' + c.discount_value} off</td>
-          <td>${c.uses_count}${c.max_uses ? '/' + c.max_uses : ''}</td>
+          <td>${c.discount_type === 'percent' ? escapeHtml(String(c.discount_value)) + '%' : '₱' + escapeHtml(String(c.discount_value))} off</td>
+          <td>${escapeHtml(String(c.uses_count))}${c.max_uses ? '/' + escapeHtml(String(c.max_uses)) : ''}</td>
           <td style="font-size:12px;">${c.expires_at ? new Date(c.expires_at).toLocaleDateString('en-PH') : 'No expiry'}</td>
           <td><button class="copy-btn" onclick="deletePromo(${c.id})">🗑️</button></td>
         </tr>`).join('')}
