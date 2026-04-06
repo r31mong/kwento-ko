@@ -24,6 +24,10 @@ if (_missing.length) {
   console.error('Missing required environment variables:', _missing.join(', '));
   process.exit(1);
 }
+if (Buffer.from(AI_ENC_KEY, 'utf8').length !== 32) {
+  console.error('FATAL: AI_ENCRYPTION_KEY must be exactly 32 bytes');
+  process.exit(1);
+}
 
 // ── Database ──────────────────────────────────────────────────────────────────
 const db = new Database(DB_PATH);
@@ -176,6 +180,12 @@ db.exec(`
     ip_address   TEXT,
     created_at   DATETIME DEFAULT CURRENT_TIMESTAMP
   );
+`);
+
+db.exec(`
+  CREATE INDEX IF NOT EXISTS idx_stories_user_id ON stories(user_id);
+  CREATE INDEX IF NOT EXISTS idx_usage_log_action_date ON usage_log(action, created_at);
+  CREATE INDEX IF NOT EXISTS idx_story_images_story_id ON story_images(story_id);
 `);
 
 // Seed system_settings defaults
@@ -670,6 +680,9 @@ function safeParseAIJson(raw) {
     if (match) return JSON.parse(match[1]);
     throw new Error('AI returned unparseable JSON');
   }
+}
+function escapeHtmlServer(s) {
+  return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 // ── AIProviderFactory ─────────────────────────────────────────────────────────
@@ -1336,14 +1349,14 @@ app.post('/api/compile-book', authMiddleware, async (req, res) => {
       const imgHtml = imgData ? `<img src="data:image/png;base64,${imgData}" style="max-width:100%;max-height:45%;object-fit:contain;" />` : '';
       const causeEffectHtml = page.causeEffect ? `
         <div style="background:#FFF3CD;border-left:4px solid #FF9800;padding:8px;margin:8px 0;font-size:0.85em;">
-          <strong>Cause &amp; Effect:</strong> ${page.causeEffect.wrongChoice} → ${page.causeEffect.consequence} → ${page.causeEffect.resolution}
+          <strong>Cause &amp; Effect:</strong> ${escapeHtmlServer(page.causeEffect.wrongChoice)} → ${escapeHtmlServer(page.causeEffect.consequence)} → ${escapeHtmlServer(page.causeEffect.resolution)}
         </div>` : '';
       return `
         <div class="page" style="page-break-before:always;padding:20mm;font-family:Georgia,serif;">
           <div style="text-align:right;font-size:0.8em;color:#999;">Page ${page.pageNumber}</div>
           ${imgHtml}
-          <p style="font-size:${layoutJSON.storyPages?.textFontSize || 16}pt;line-height:${layoutJSON.storyPages?.lineHeight || 1.6};">${page.text}</p>
-          ${page.textEnglish ? `<p style="font-size:${layoutJSON.storyPages?.translationFontSize || 13}pt;color:#555;font-style:italic;">${page.textEnglish}</p>` : ''}
+          <p style="font-size:${layoutJSON.storyPages?.textFontSize || 16}pt;line-height:${layoutJSON.storyPages?.lineHeight || 1.6};">${escapeHtmlServer(page.text)}</p>
+          ${page.textEnglish ? `<p style="font-size:${layoutJSON.storyPages?.translationFontSize || 13}pt;color:#555;font-style:italic;">${escapeHtmlServer(page.textEnglish)}</p>` : ''}
           ${causeEffectHtml}
           ${showWatermark ? '<div style="position:fixed;bottom:5mm;right:5mm;font-size:8pt;color:#ccc;opacity:0.5;">Created with Kwento Ko</div>' : ''}
         </div>`;
@@ -1371,13 +1384,13 @@ app.post('/api/compile-book', authMiddleware, async (req, res) => {
     </head><body>
       <!-- Cover -->
       <div class="page" style="background:${layoutJSON.coverPage?.backgroundColor || '#FFF8E1'};padding:20mm;display:flex;flex-direction:column;justify-content:center;align-items:center;">
-        <h1 style="font-size:${layoutJSON.coverPage?.titleFontSize || 32}pt;color:${layoutJSON.coverPage?.accentColor || '#FF6B6B'};text-align:center;">${storyData.title || story.title}</h1>
+        <h1 style="font-size:${layoutJSON.coverPage?.titleFontSize || 32}pt;color:${layoutJSON.coverPage?.accentColor || '#FF6B6B'};text-align:center;">${escapeHtmlServer(storyData.title || story.title)}</h1>
         <p style="font-size:16pt;">By ${user.display_name}</p>
         ${showBranding ? '<p style="font-size:10pt;color:#999;">Created with Kwento Ko | alibebeph.com</p>' : ''}
       </div>
       <!-- Dedication -->
       <div class="page" style="page-break-before:always;padding:20mm;display:flex;align-items:center;justify-content:center;">
-        <p style="font-style:italic;font-size:14pt;text-align:center;">${dedication ? `This book is dedicated to...<br><br>${dedication}` : 'This book is dedicated to all the little dreamers.'}</p>
+        <p style="font-style:italic;font-size:14pt;text-align:center;">${dedication ? `This book is dedicated to...<br><br>${escapeHtmlServer(dedication)}` : 'This book is dedicated to all the little dreamers.'}</p>
       </div>
       ${printGuideHtml}
       ${pagesHtml}
@@ -1385,14 +1398,14 @@ app.post('/api/compile-book', authMiddleware, async (req, res) => {
       <div class="page" style="page-break-before:always;background:${layoutJSON.coverPage?.accentColor || '#FF6B6B'};padding:20mm;display:flex;align-items:center;justify-content:center;">
         <div style="text-align:center;color:white;">
           <h2>Moral of the Story</h2>
-          <p style="font-size:16pt;">${storyData.moral || ''}</p>
-          ${storyData.moralEnglish ? `<p style="font-size:13pt;opacity:0.85;">${storyData.moralEnglish}</p>` : ''}
+          <p style="font-size:16pt;">${escapeHtmlServer(storyData.moral)}</p>
+          ${storyData.moralEnglish ? `<p style="font-size:13pt;opacity:0.85;">${escapeHtmlServer(storyData.moralEnglish)}</p>` : ''}
         </div>
       </div>
       ${discussionGuideHtml}
       <!-- Back Cover -->
       <div class="page" style="page-break-before:always;padding:20mm;text-align:center;">
-        <p>${storyData.backCoverSummary || ''}</p>
+        <p>${escapeHtmlServer(storyData.backCoverSummary)}</p>
         <p style="font-size:10pt;color:#999;">© 2025 Crafts by AlibebePH | alibebeph.com | All rights reserved.</p>
       </div>
     </body></html>`;
