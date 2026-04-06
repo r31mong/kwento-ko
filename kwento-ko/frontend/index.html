@@ -1064,34 +1064,34 @@ function renderDiscussionGuide() {
   document.getElementById('discussion-guide-content').innerHTML = `
     <div class="admin-card">
       <h3>📚 For Parents &amp; Teachers</h3>
-      <p style="font-size:14px;color:#666;margin-bottom:16px;">Use these questions to spark conversation about <em>${story?.title || 'this story'}</em> with ${ageRange}-year-olds.</p>
+      <p style="font-size:14px;color:#666;margin-bottom:16px;">Use these questions to spark conversation about <em>${escapeHtml(story?.title || 'this story')}</em> with ${escapeHtml(ageRange)}-year-olds.</p>
 
       <h4 style="font-family:'Quicksand',sans-serif;color:var(--deep-blue);margin-bottom:8px;">Before Reading</h4>
       <ul style="font-size:14px;color:#555;padding-left:20px;margin-bottom:16px;">
         <li>What do you think this story is about?</li>
-        <li>Have you ever met someone like ${char?.name || 'the character'}?</li>
-        <li>What would you do in a ${getSelected('setting-grid') || 'this'} setting?</li>
+        <li>Have you ever met someone like ${escapeHtml(char?.name || 'the character')}?</li>
+        <li>What would you do in a ${escapeHtml(getSelected('setting-grid') || 'this')} setting?</li>
       </ul>
 
       <h4 style="font-family:'Quicksand',sans-serif;color:var(--deep-blue);margin-bottom:8px;">While Reading</h4>
       <ul style="font-size:14px;color:#555;padding-left:20px;margin-bottom:16px;">
-        <li>How is ${char?.name || 'the character'} feeling right now?</li>
+        <li>How is ${escapeHtml(char?.name || 'the character')} feeling right now?</li>
         <li>What do you think will happen next?</li>
-        <li>Why did ${char?.name || 'the character'} make that choice?</li>
+        <li>Why did ${escapeHtml(char?.name || 'the character')} make that choice?</li>
       </ul>
 
       <h4 style="font-family:'Quicksand',sans-serif;color:var(--deep-blue);margin-bottom:8px;">After Reading</h4>
       <ul style="font-size:14px;color:#555;padding-left:20px;margin-bottom:16px;">
         <li>What was the most important lesson in this story?</li>
-        <li>How can we apply the lesson of <em>${lesson}</em> in our daily life?</li>
+        <li>How can we apply the lesson of <em>${escapeHtml(lesson)}</em> in our daily life?</li>
         <li>If you could add one more page, what would happen?</li>
       </ul>
 
       ${values === 'Christian' ? `<h4 style="font-family:'Quicksand',sans-serif;color:var(--deep-blue);margin-bottom:8px;">🙏 Prayer Prompt</h4>
-      <p style="font-size:14px;color:#555;margin-bottom:16px;">Let's pray together: "Dear God, help us to be like ${char?.name || 'our hero'} — ${char?.personalityDescription?.split('.')[0] || 'brave and kind'}. Amen."</p>` : ''}
+      <p style="font-size:14px;color:#555;margin-bottom:16px;">Let's pray together: "Dear God, help us to be like ${escapeHtml(char?.name || 'our hero')} — ${escapeHtml(char?.personalityDescription?.split('.')[0] || 'brave and kind')}. Amen."</p>` : ''}
 
       <h4 style="font-family:'Quicksand',sans-serif;color:var(--deep-blue);margin-bottom:8px;">🎨 Creative Activity</h4>
-      <p style="font-size:14px;color:#555;">Draw your favorite scene from the story. What colors would you use? What is ${char?.name || 'the character'} doing?</p>
+      <p style="font-size:14px;color:#555;">Draw your favorite scene from the story. What colors would you use? What is ${escapeHtml(char?.name || 'the character')} doing?</p>
     </div>`;
 }
 
@@ -1142,7 +1142,7 @@ async function generatePageImage(pageNum, prompt) {
     resultEl.innerHTML = '';
     resultEl.appendChild(img);
   } catch (err) {
-    resultEl.innerHTML = `<span style="color:#e53e3e;font-size:13px;">${err.message}</span>`;
+    resultEl.innerHTML = `<span style="color:#e53e3e;font-size:13px;">${escapeHtml(err.message)}</span>`;
   }
 }
 
@@ -1478,7 +1478,7 @@ async function loadAdminUsers() {
       <thead><tr><th>Email</th><th>Tier</th><th>Joined</th><th>Actions</th></tr></thead>
       <tbody>
         ${data.users.map(u => `<tr>
-          <td>${u.email}</td>
+          <td>${escapeHtml(u.email)}</td>
           <td><span class="badge badge-${u.tier==='pro'?'blue':u.tier==='business'?'green':'coral'}">${u.is_tester?'🧪 ':''} ${u.tier}</span></td>
           <td style="font-size:12px;">${new Date(u.created_at).toLocaleDateString('en-PH')}</td>
           <td>
