@@ -17,6 +17,14 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 const AI_ENC_KEY = process.env.AI_ENCRYPTION_KEY; // Must be 32 chars
 const DB_PATH = process.env.DB_PATH || '/app/data/kwento.db';
 
+// ── Startup Validation ────────────────────────────────────────────────────────
+const REQUIRED_ENV = ['JWT_SECRET', 'AI_ENCRYPTION_KEY', 'ADMIN_EMAIL', 'ADMIN_PASSWORD'];
+const _missing = REQUIRED_ENV.filter(k => !process.env[k]);
+if (_missing.length) {
+  console.error('Missing required environment variables:', _missing.join(', '));
+  process.exit(1);
+}
+
 // ── Database ──────────────────────────────────────────────────────────────────
 const db = new Database(DB_PATH);
 db.pragma('journal_mode = WAL');
@@ -70,7 +78,7 @@ db.exec(`
 
   CREATE TABLE IF NOT EXISTS usage_log (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id      INTEGER NOT NULL REFERENCES users(id),
+    user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     action       TEXT NOT NULL,
     provider     TEXT,
     model        TEXT,
@@ -189,20 +197,29 @@ settingsDefaults.forEach(([k, v]) => insertSetting.run(k, v));
 // Seed ai_provider_settings from .env on first run
 function encryptKey(raw) {
   if (!raw || !AI_ENC_KEY) return null;
+  const keyBuf = Buffer.from(AI_ENC_KEY, 'utf8');
+  if (keyBuf.length !== 32) throw new Error(`AI_ENCRYPTION_KEY must be exactly 32 bytes (got ${keyBuf.length})`);
   const iv = crypto.randomBytes(16);
-  const cipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(AI_ENC_KEY), iv);
+  const cipher = crypto.createCipheriv('aes-256-cbc', keyBuf, iv);
   const encrypted = Buffer.concat([cipher.update(raw), cipher.final()]);
   return iv.toString('hex') + ':' + encrypted.toString('hex');
 }
 function decryptKey(enc) {
   if (!enc || !AI_ENC_KEY) return null;
-  const [ivHex, encHex] = enc.split(':');
-  const iv = Buffer.from(ivHex, 'hex');
-  const decipher = crypto.createDecipheriv('aes-256-cbc', Buffer.from(AI_ENC_KEY), iv);
-  return Buffer.concat([decipher.update(Buffer.from(encHex, 'hex')), decipher.final()]).toString();
+  try {
+    const [ivHex, encHex] = enc.split(':');
+    if (!ivHex || !encHex) return null;
+    const keyBuf = Buffer.from(AI_ENC_KEY, 'utf8');
+    const iv = Buffer.from(ivHex, 'hex');
+    const decipher = crypto.createDecipheriv('aes-256-cbc', keyBuf, iv);
+    return Buffer.concat([decipher.update(Buffer.from(encHex, 'hex')), decipher.final()]).toString();
+  } catch {
+    return null;
+  }
 }
 function keyHint(raw) {
-  if (!raw || raw.length < 4) return '...????';
+  if (!raw) return null;
+  if (raw.length < 4) return '(short)';
   return '...' + raw.slice(-4);
 }
 

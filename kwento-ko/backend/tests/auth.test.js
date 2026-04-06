@@ -22,4 +22,14 @@ describe('Schema', () => {
     ];
     required.forEach(t => expect(tables).toContain(t));
   });
+
+  it('seeds system_settings defaults', () => {
+    const count = db.prepare("SELECT COUNT(*) as n FROM system_settings").get().n;
+    expect(count).toBe(8);
+  });
+
+  it('seeds ai_provider_settings rows', () => {
+    const count = db.prepare("SELECT COUNT(*) as n FROM ai_provider_settings").get().n;
+    expect(count).toBe(9);
+  });
 });
