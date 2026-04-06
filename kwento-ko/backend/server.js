@@ -1056,6 +1056,7 @@ class OdooClient {
   }
 
   _makeClients(cfg) {
+    if (!cfg.url) throw new Error('Odoo URL not configured');
     const parsed = new URL(cfg.url);
     const opts = { host: parsed.hostname, port: parseInt(parsed.port) || 8069 };
     return {
@@ -1258,6 +1259,8 @@ app.post('/api/generate-image', authMiddleware, genRateLimit, async (req, res) =
 
     let savedId = null;
     if (storyId) {
+      const storyOwner = db.prepare('SELECT id FROM stories WHERE id = ? AND user_id = ?').get(storyId, req.userId);
+      if (!storyOwner) return res.status(403).json({ error: 'Story not found or access denied' });
       const imgProvider = aiSettings.getActiveProvider('image');
       const result = db.prepare(`
         INSERT INTO story_images (story_id, page_index, prompt_used, provider, model, image_data)
@@ -1396,10 +1399,14 @@ app.post('/api/compile-book', authMiddleware, async (req, res) => {
       executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium-browser',
       args: ['--no-sandbox', '--disable-setuid-sandbox'],
     });
-    const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: 'networkidle0' });
-    const pdfBuffer = await page.pdf({ width: dims.width, height: dims.height, printBackground: true });
-    await browser.close();
+    let pdfBuffer;
+    try {
+      const page = await browser.newPage();
+      await page.setContent(html, { waitUntil: 'networkidle0' });
+      pdfBuffer = await page.pdf({ width: dims.width, height: dims.height, printBackground: true });
+    } finally {
+      await browser.close();
+    }
 
     db.prepare('UPDATE usage_counters SET compiles_month = compiles_month + 1 WHERE user_id = ?').run(req.userId);
     db.prepare('INSERT INTO usage_log (user_id, action, provider, model) VALUES (?, ?, ?, ?)')
