@@ -1776,6 +1776,13 @@ app.get('/api/health', (req, res) => {
 });
 // ─────────────────────────────────────────────────────────────────────────────
 
+// SPA catch-all — serve index.html for /admin and any non-API route
+app.get('*', (req, res) => {
+  if (!req.path.startsWith('/api/')) {
+    res.sendFile(path.join(__dirname, '../frontend/index.html'));
+  }
+});
+
 // ── Start ─────────────────────────────────────────────────────────────────────
 if (require.main === module) {
   app.listen(PORT, () => console.log(`Kwento Ko running on port ${PORT}`));

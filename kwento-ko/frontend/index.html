@@ -1,2 +1,1562 @@
 <!DOCTYPE html>
-<html><body><h1>Kwento Ko — Coming Soon</h1></body></html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kwento Ko — Create Your Filipino Children's Story</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;600;700;800&family=Nunito:wght@400;600;700&family=Quicksand:wght@500;600;700&family=Pacifico&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    :root {
+      --sun-yellow: #FFD63A;
+      --coral:      #FF6B6B;
+      --sky:        #4FC3F7;
+      --leaf:       #66BB6A;
+      --deep-blue:  #1A237E;
+      --warm-white: #FFFDE7;
+      --cream:      #FFF8E1;
+      --earth:      #795548;
+      --muted:      #5D4037;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Nunito', sans-serif; background: var(--warm-white); color: #333; min-width: 375px; overflow-x: hidden; }
+
+    /* ── Maintenance Ribbon ── */
+    #maintenance-ribbon { display: none; position: sticky; top: 0; z-index: 1000; background: #FFF3CD; border-bottom: 3px solid #FF9800; padding: 8px 16px; font-family: 'Quicksand', sans-serif; font-size: 14px; display: none; align-items: center; gap: 8px; }
+    #maintenance-ribbon button { background: none; border: none; font-size: 18px; cursor: pointer; margin-left: auto; }
+
+    /* ── Header ── */
+    #app-header { background: var(--deep-blue); padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; }
+    .logo { font-family: 'Pacifico', cursive; color: var(--sun-yellow); font-size: 26px; text-decoration: none; }
+    .logo-sunburst { display: inline-block; position: relative; }
+    .logo-sunburst::before { content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 60px; height: 60px; background: radial-gradient(circle, rgba(255,214,58,0.3) 0%, transparent 70%); border-radius: 50%; z-index: -1; }
+    #user-nav { display: flex; align-items: center; gap: 12px; font-family: 'Quicksand', sans-serif; }
+    #user-nav button { background: var(--coral); color: white; border: none; border-radius: 20px; padding: 7px 18px; font-family: 'Quicksand', sans-serif; font-weight: 600; cursor: pointer; font-size: 14px; }
+    #user-nav .btn-ghost { background: transparent; border: 2px solid var(--sun-yellow); color: var(--sun-yellow); }
+    #user-avatar { font-size: 24px; cursor: pointer; }
+    #user-menu { position: relative; }
+    #user-dropdown { display: none; position: absolute; right: 0; top: 40px; background: white; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.15); padding: 8px 0; min-width: 200px; z-index: 100; }
+    #user-dropdown.open { display: block; }
+    #user-dropdown a, #user-dropdown button { display: block; width: 100%; text-align: left; padding: 10px 16px; text-decoration: none; color: #333; background: none; border: none; font-family: 'Quicksand', sans-serif; font-size: 14px; cursor: pointer; }
+    #user-dropdown a:hover, #user-dropdown button:hover { background: var(--cream); }
+
+    /* ── Auth Modal ── */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 500; align-items: center; justify-content: center; }
+    .modal-overlay.open { display: flex; }
+    .modal { background: white; border-radius: 20px; padding: 32px; max-width: 420px; width: 90%; }
+    .modal h2 { font-family: 'Baloo 2', sans-serif; color: var(--deep-blue); margin-bottom: 20px; }
+    .modal input { width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 12px; font-family: 'Nunito', sans-serif; font-size: 16px; margin-bottom: 12px; }
+    .modal input:focus { outline: none; border-color: var(--coral); }
+    .modal .btn-primary { width: 100%; padding: 14px; background: var(--coral); color: white; border: none; border-radius: 20px; font-family: 'Quicksand', sans-serif; font-weight: 700; font-size: 16px; cursor: pointer; }
+    .modal .btn-primary:hover { background: #e55a5a; }
+    .modal .toggle-link { text-align: center; margin-top: 12px; font-size: 14px; }
+    .modal .toggle-link a { color: var(--coral); cursor: pointer; text-decoration: none; font-weight: 600; }
+    .modal .error-msg { color: #e53e3e; font-size: 14px; margin-bottom: 8px; }
+
+    /* ── Progress Bar (Wizard) ── */
+    #wizard-progress { display: flex; align-items: center; justify-content: center; padding: 20px; gap: 0; background: white; border-bottom: 1px solid #f0f0f0; }
+    .step-circle { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Quicksand', sans-serif; font-weight: 700; font-size: 14px; background: #e0e0e0; color: #999; }
+    .step-circle.active { background: var(--coral); color: white; }
+    .step-circle.done { background: var(--leaf); color: white; }
+    .step-label { font-family: 'Quicksand', sans-serif; font-size: 12px; color: #999; margin: 0 4px; white-space: nowrap; }
+    .step-label.active { color: var(--coral); font-weight: 600; }
+    .step-connector { width: 40px; height: 2px; background: #e0e0e0; }
+    .step-connector.done { background: var(--leaf); }
+    @media (max-width: 480px) { .step-label { display: none; } .step-connector { width: 24px; } }
+
+    /* ── Wizard Views ── */
+    .wizard-view { display: none; padding: 20px; max-width: 680px; margin: 0 auto; }
+    .wizard-view.active { display: block; }
+    .section-header { background: var(--deep-blue); color: white; padding: 12px 20px; border-radius: 12px; margin-bottom: 20px; font-family: 'Baloo 2', sans-serif; font-size: 20px; position: relative; overflow: hidden; }
+    .section-header::after { content: '◆'; position: absolute; right: 16px; top: 50%; transform: translateY(-50%); opacity: 0.3; font-size: 24px; }
+
+    /* ── Cards & Pills ── */
+    .card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+    @media (max-width: 480px) { .card-grid { grid-template-columns: 1fr; } }
+    .choice-card { border: 2px solid #e0e0e0; border-radius: 16px; padding: 16px; text-align: center; cursor: pointer; transition: all 0.2s; font-family: 'Quicksand', sans-serif; }
+    .choice-card:hover { border-color: var(--coral); background: var(--cream); }
+    .choice-card.selected { border-color: var(--coral); background: var(--cream); }
+    .choice-card .emoji { font-size: 32px; display: block; margin-bottom: 6px; }
+    .choice-card .label { font-weight: 700; font-size: 14px; color: var(--deep-blue); }
+    .choice-card .sublabel { font-size: 12px; color: #999; }
+    .pills { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+    .pill { border: 2px solid #e0e0e0; border-radius: 20px; padding: 7px 16px; font-family: 'Quicksand', sans-serif; font-weight: 600; font-size: 13px; cursor: pointer; transition: all 0.2s; background: white; }
+    .pill:hover { border-color: var(--coral); }
+    .pill.selected { background: var(--coral); color: white; border-color: var(--coral); }
+    .pill.selected-teal { background: #006f7e; color: white; border-color: #006f7e; }
+    label.field-label { display: block; font-family: 'Quicksand', sans-serif; font-weight: 600; color: var(--deep-blue); margin-bottom: 6px; margin-top: 16px; }
+    input[type="text"], textarea, select { width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 12px; font-family: 'Nunito', sans-serif; font-size: 15px; }
+    input[type="text"]:focus, textarea:focus, select:focus { outline: none; border-color: var(--coral); }
+    textarea { min-height: 80px; resize: vertical; }
+
+    /* ── Buttons ── */
+    .btn-primary { background: var(--coral); color: white; border: none; border-radius: 20px; padding: 12px 28px; font-family: 'Quicksand', sans-serif; font-weight: 700; font-size: 15px; cursor: pointer; transition: all 0.2s; }
+    .btn-primary:hover { background: #e55a5a; transform: translateY(-1px); }
+    .btn-secondary { background: var(--sky); color: var(--deep-blue); border: none; border-radius: 20px; padding: 12px 28px; font-family: 'Quicksand', sans-serif; font-weight: 700; font-size: 15px; cursor: pointer; }
+    .btn-ghost { background: white; color: var(--coral); border: 2px solid var(--coral); border-radius: 20px; padding: 10px 24px; font-family: 'Quicksand', sans-serif; font-weight: 700; font-size: 14px; cursor: pointer; }
+    .btn-row { display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px; flex-wrap: wrap; }
+
+    /* ── Character Preview Card ── */
+    #character-preview { background: linear-gradient(135deg, var(--cream), white); border: 2px solid var(--sun-yellow); border-radius: 20px; padding: 20px; margin-top: 20px; }
+    #character-preview h3 { font-family: 'Baloo 2', sans-serif; color: var(--deep-blue); font-size: 20px; }
+    .stat-bar-wrap { margin: 4px 0; }
+    .stat-bar-wrap .stat-label { font-family: 'Quicksand', sans-serif; font-size: 12px; color: #666; display: flex; justify-content: space-between; }
+    .stat-bar { height: 8px; background: #e0e0e0; border-radius: 4px; overflow: hidden; margin-top: 2px; }
+    .stat-bar-fill { height: 100%; background: var(--coral); border-radius: 4px; transition: width 0.5s; }
+    .catchphrase-bubble { background: var(--sun-yellow); border-radius: 12px; padding: 10px 16px; margin: 10px 0; font-family: 'Baloo 2', sans-serif; font-style: italic; position: relative; }
+
+    /* ── Loading Animation ── */
+    #loading-overlay { display: none; position: fixed; inset: 0; background: rgba(255,248,225,0.95); z-index: 400; flex-direction: column; align-items: center; justify-content: center; }
+    #loading-overlay.active { display: flex; }
+    .floating-emoji { font-size: 48px; animation: float 2s ease-in-out infinite; margin: 8px; }
+    .floating-emoji:nth-child(2) { animation-delay: 0.3s; }
+    .floating-emoji:nth-child(3) { animation-delay: 0.6s; }
+    @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-16px); } }
+    #loading-message { font-family: 'Baloo 2', sans-serif; color: var(--deep-blue); font-size: 20px; margin-top: 20px; text-align: center; }
+    #loading-progress { width: 280px; height: 10px; background: #e0e0e0; border-radius: 5px; margin-top: 16px; overflow: hidden; }
+    #loading-progress-fill { height: 100%; background: var(--coral); border-radius: 5px; transition: width 0.5s; width: 0%; }
+
+    /* ── Step 4 Tabs ── */
+    #tab-bar { display: flex; border-bottom: 2px solid #e0e0e0; background: white; overflow-x: auto; }
+    .tab-btn { padding: 12px 18px; font-family: 'Quicksand', sans-serif; font-weight: 600; font-size: 14px; border: none; background: none; cursor: pointer; color: #999; white-space: nowrap; border-bottom: 3px solid transparent; margin-bottom: -2px; }
+    .tab-btn.active { color: var(--coral); border-bottom-color: var(--coral); }
+    .tab-panel { display: none; padding: 20px; max-width: 780px; margin: 0 auto; }
+    .tab-panel.active { display: block; }
+
+    /* ── Story Page Card ── */
+    .story-page-card { border: 2px solid #f0f0f0; border-radius: 16px; padding: 20px; margin-bottom: 16px; background: white; }
+    .page-number-badge { background: var(--coral); color: white; border-radius: 50%; width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; font-family: 'Quicksand', sans-serif; font-weight: 700; font-size: 14px; margin-bottom: 10px; }
+    .story-text { font-size: 17px; line-height: 1.7; margin-bottom: 10px; }
+    .translation-text { color: #666; font-style: italic; font-size: 14px; border-left: 3px solid var(--sky); padding-left: 10px; margin-bottom: 10px; }
+    .cause-effect-box { background: #FFF3CD; border-left: 4px solid #FF9800; padding: 10px 14px; border-radius: 0 8px 8px 0; margin: 10px 0; font-size: 14px; }
+    .illus-idea { background: var(--cream); border-radius: 8px; padding: 8px 12px; font-size: 13px; color: #666; margin: 8px 0; }
+    .page-actions { display: flex; gap: 8px; margin-top: 12px; }
+
+    /* ── Image Prompt Card ── */
+    .prompt-card { border: 2px solid #e0e0e0; border-radius: 16px; padding: 16px; margin-bottom: 12px; background: white; }
+    .prompt-text { font-size: 13px; color: #555; font-family: 'Nunito', sans-serif; white-space: pre-wrap; word-break: break-word; }
+    .prompt-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+    .copy-btn { background: var(--sky); color: var(--deep-blue); border: none; border-radius: 12px; padding: 6px 14px; font-family: 'Quicksand', sans-serif; font-weight: 600; font-size: 13px; cursor: pointer; }
+    .copy-btn:active { opacity: 0.7; }
+
+    /* ── Character Card ── */
+    #character-card-print { background: linear-gradient(135deg, var(--cream), white); border: 3px solid var(--sun-yellow); border-radius: 20px; padding: 24px; max-width: 400px; margin: 0 auto; }
+
+    /* ── Library ── */
+    .library-card { border: 2px solid #f0f0f0; border-radius: 16px; padding: 16px; margin-bottom: 12px; background: white; display: flex; align-items: flex-start; gap: 16px; }
+    .library-card .story-emoji { font-size: 36px; }
+    .library-card h4 { font-family: 'Baloo 2', sans-serif; color: var(--deep-blue); margin-bottom: 4px; }
+    .library-card .meta { font-size: 12px; color: #999; font-family: 'Quicksand', sans-serif; }
+    .badge { display: inline-block; padding: 2px 10px; border-radius: 10px; font-family: 'Quicksand', sans-serif; font-size: 12px; font-weight: 600; margin-right: 4px; }
+    .badge-blue { background: #e3f2fd; color: #1565c0; }
+    .badge-green { background: #e8f5e9; color: #2e7d32; }
+    .badge-coral { background: #fce4ec; color: #c62828; }
+
+    /* ── Upgrade Banner ── */
+    .upgrade-banner { background: linear-gradient(135deg, var(--deep-blue), #3949ab); color: white; border-radius: 16px; padding: 20px; text-align: center; margin: 20px 0; }
+    .upgrade-banner h3 { font-family: 'Baloo 2', sans-serif; font-size: 20px; margin-bottom: 8px; }
+    .upgrade-banner p { font-size: 14px; opacity: 0.9; margin-bottom: 14px; }
+    .upgrade-banner button { background: var(--sun-yellow); color: var(--deep-blue); border: none; border-radius: 20px; padding: 10px 24px; font-family: 'Quicksand', sans-serif; font-weight: 700; cursor: pointer; }
+
+    /* ── Footer ── */
+    #app-footer { background: var(--deep-blue); color: rgba(255,255,255,0.7); text-align: center; padding: 16px; font-family: 'Quicksand', sans-serif; font-size: 13px; margin-top: 40px; }
+
+    /* ── Admin ── */
+    #admin-view { display: none; }
+    #admin-view.active { display: block; }
+    .admin-card { background: white; border-radius: 16px; padding: 20px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .admin-card h3 { font-family: 'Baloo 2', sans-serif; color: var(--deep-blue); margin-bottom: 12px; }
+    .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+    .stat-item { background: var(--cream); border-radius: 12px; padding: 14px; text-align: center; }
+    .stat-item .number { font-family: 'Baloo 2', sans-serif; font-size: 28px; color: var(--coral); }
+    .stat-item .label { font-family: 'Quicksand', sans-serif; font-size: 12px; color: #666; margin-top: 4px; }
+    .provider-card { border: 3px solid #e0e0e0; border-radius: 16px; padding: 16px; margin-bottom: 12px; }
+    .provider-card.active-provider { border-color: var(--leaf); }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th { background: var(--cream); padding: 10px; text-align: left; font-family: 'Quicksand', sans-serif; font-weight: 600; }
+    td { padding: 10px; border-bottom: 1px solid #f0f0f0; }
+  </style>
+</head>
+<body>
+
+<!-- Maintenance Ribbon -->
+<div id="maintenance-ribbon">
+  <span>⚠️</span>
+  <span id="maintenance-msg">Kwento Ko is experiencing service issues. Full access available until <span id="maintenance-until-text"></span>. We are working to restore service.</span>
+  <button onclick="this.parentElement.style.display='none'">✕</button>
+</div>
+
+<!-- Header -->
+<header id="app-header">
+  <a href="/" class="logo logo-sunburst">Kwento Ko</a>
+  <nav id="user-nav">
+    <span id="nav-guest" style="display:flex;gap:8px;">
+      <button class="btn-ghost" onclick="openModal('login')">Log In</button>
+      <button onclick="openModal('register')">Get Started Free</button>
+    </span>
+    <span id="nav-user" style="display:none;align-items:center;gap:10px;">
+      <div id="user-menu">
+        <span id="user-avatar" onclick="toggleDropdown()">📚</span>
+        <span id="user-display-name" style="color:white;font-family:'Quicksand',sans-serif;font-size:14px;cursor:pointer;" onclick="toggleDropdown()"></span>
+        <div id="user-dropdown">
+          <a href="#" onclick="showLibrary();return false;">📚 My Library</a>
+          <a href="#" onclick="showReferral();return false;">🎁 Refer Friends</a>
+          <hr style="border:none;border-top:1px solid #f0f0f0;margin:4px 0;">
+          <button onclick="logout()">Sign Out</button>
+        </div>
+      </div>
+    </span>
+  </nav>
+</header>
+
+<!-- Loading Overlay -->
+<div id="loading-overlay">
+  <div style="display:flex;">
+    <span class="floating-emoji">✍️</span>
+    <span class="floating-emoji">📖</span>
+    <span class="floating-emoji">🌺</span>
+  </div>
+  <div id="loading-message">Isinusulat ang kwento...</div>
+  <div id="loading-progress"><div id="loading-progress-fill"></div></div>
+</div>
+
+<!-- Auth Modal -->
+<div class="modal-overlay" id="auth-modal">
+  <div class="modal">
+    <h2 id="modal-title">Welcome to Kwento Ko</h2>
+    <p id="modal-error" class="error-msg" style="display:none;"></p>
+    <div id="register-fields">
+      <input type="text" id="reg-name" placeholder="Your name (e.g. Maria)" />
+    </div>
+    <input type="email" id="auth-email" placeholder="Email address" />
+    <input type="password" id="auth-password" placeholder="Password (min 6 characters)" />
+    <button class="btn-primary" onclick="submitAuth()">
+      <span id="modal-btn-text">Create Free Account</span>
+    </button>
+    <div class="toggle-link">
+      <span id="modal-toggle-text">Already have an account?</span>
+      <a onclick="toggleAuthMode()"> <span id="modal-toggle-link">Log in here</span></a>
+    </div>
+  </div>
+</div>
+
+<!-- Wizard Progress -->
+<div id="wizard-progress" style="display:none;">
+  <div class="step-circle" id="step-dot-1">①</div>
+  <span class="step-label" id="step-lbl-1">Character</span>
+  <div class="step-connector" id="step-con-1"></div>
+  <div class="step-circle" id="step-dot-2">②</div>
+  <span class="step-label" id="step-lbl-2">Story Setup</span>
+  <div class="step-connector" id="step-con-2"></div>
+  <div class="step-circle" id="step-dot-3">③</div>
+  <span class="step-label" id="step-lbl-3">Generate</span>
+  <div class="step-connector" id="step-con-3"></div>
+  <div class="step-circle" id="step-dot-4">④</div>
+  <span class="step-label" id="step-lbl-4">Your Book</span>
+</div>
+
+<!-- Main App Content (shown after auth check) -->
+<main id="app-main" style="display:none;">
+
+  <!-- Landing / Step 1: Character Builder -->
+  <div class="wizard-view active" id="view-step1">
+    <div class="section-header">① Build Your Character</div>
+
+    <label class="field-label">Character Name *</label>
+    <input type="text" id="char-name" placeholder="e.g. Niko, Luna, Kiko..." oninput="updateCharPreview()" />
+
+    <label class="field-label">Character Type</label>
+    <div class="card-grid" id="char-type-grid">
+      <div class="choice-card selected" data-value="Animal Friend" onclick="selectCard(this,'char-type-grid')"><span class="emoji">🦊</span><span class="label">Animal Friend</span></div>
+      <div class="choice-card" data-value="Filipino Kid" onclick="selectCard(this,'char-type-grid')"><span class="emoji">🧒</span><span class="label">Filipino Kid</span></div>
+      <div class="choice-card" data-value="Fantasy Being" onclick="selectCard(this,'char-type-grid')"><span class="emoji">🧚</span><span class="label">Fantasy Being</span></div>
+      <div class="choice-card" data-value="Custom" onclick="selectCard(this,'char-type-grid');document.getElementById('custom-type-wrap').style.display='block'"><span class="emoji">✏️</span><span class="label">Custom</span></div>
+    </div>
+    <div id="custom-type-wrap" style="display:none;margin-bottom:16px;">
+      <input type="text" id="custom-type" placeholder="Describe your character type..." oninput="updateCharPreview()" />
+    </div>
+
+    <label class="field-label">Personality (pick up to 3)</label>
+    <div class="pills" id="trait-pills">
+      <div class="pill" data-value="Matapang" onclick="togglePill(this,'trait-pills',3)">Matapang (Brave)</div>
+      <div class="pill" data-value="Mausisa" onclick="togglePill(this,'trait-pills',3)">Mausisa (Curious)</div>
+      <div class="pill" data-value="Masaya" onclick="togglePill(this,'trait-pills',3)">Masaya (Cheerful)</div>
+      <div class="pill" data-value="Mahal sa Lahat" onclick="togglePill(this,'trait-pills',3)">Mahal sa Lahat (Loving)</div>
+      <div class="pill" data-value="Matalino" onclick="togglePill(this,'trait-pills',3)">Matalino (Smart)</div>
+      <div class="pill" data-value="Mahiyain" onclick="togglePill(this,'trait-pills',3)">Mahiyain (Shy)</div>
+      <div class="pill" data-value="Palaro" onclick="togglePill(this,'trait-pills',3)">Palaro (Playful)</div>
+      <div class="pill" data-value="Mabait" onclick="togglePill(this,'trait-pills',3)">Mabait (Kind)</div>
+    </div>
+
+    <label class="field-label">Distinctive Feature <span style="color:#999;font-weight:400;">(optional)</span></label>
+    <input type="text" id="char-feature" placeholder="e.g. always wears a red bandana, has a magical tail..." oninput="updateCharPreview()" />
+
+    <!-- Advanced Mode -->
+    <details style="margin-top:16px;">
+      <summary style="cursor:pointer;font-family:'Quicksand',sans-serif;font-weight:600;color:var(--coral);">More Options ▼</summary>
+      <div style="margin-top:12px;">
+        <label class="field-label">Character Age</label>
+        <input type="text" id="char-age" placeholder="e.g. 7 years old, young fox..." />
+        <label class="field-label">Special Ability</label>
+        <input type="text" id="char-ability" placeholder="e.g. can talk to animals..." />
+        <label class="field-label">Supporting Character + Relationship</label>
+        <input type="text" id="char-support" placeholder="e.g. Nanay Rosa (mother), Lolo Ben (grandfather)..." />
+      </div>
+    </details>
+
+    <!-- Live Preview -->
+    <div id="character-preview">
+      <h3 id="preview-name">Your Character</h3>
+      <p id="preview-type" style="font-size:13px;color:#999;font-family:'Quicksand',sans-serif;margin-bottom:8px;"></p>
+      <div id="preview-traits"></div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn-primary" onclick="goToStep(2)">Story Setup →</button>
+    </div>
+  </div>
+
+  <!-- Step 2: Story Setup -->
+  <div class="wizard-view" id="view-step2">
+    <div class="section-header">② Story Setup</div>
+
+    <label class="field-label">Story Tone</label>
+    <div class="pills" id="tone-pills">
+      <div class="pill" data-value="Funny" onclick="selectPill(this,'tone-pills')">🤣 Funny</div>
+      <div class="pill selected" data-value="Gentle" onclick="selectPill(this,'tone-pills')">🌿 Gentle</div>
+      <div class="pill" data-value="Adventurous" onclick="selectPill(this,'tone-pills')">🗺️ Adventurous</div>
+      <div class="pill" data-value="Mysterious" onclick="selectPill(this,'tone-pills')">🌙 Mysterious</div>
+      <div class="pill" data-value="Heartwarming" onclick="selectPill(this,'tone-pills')">💛 Heartwarming</div>
+    </div>
+
+    <label class="field-label">Setting</label>
+    <div class="card-grid" id="setting-grid" style="grid-template-columns:repeat(4,1fr);">
+      <div class="choice-card" data-value="City" data-fil="Lungsod" onclick="selectCard(this,'setting-grid')"><span class="emoji">🏙️</span><span class="label">Lungsod</span><span class="sublabel">City</span></div>
+      <div class="choice-card selected" data-value="Province" data-fil="Probinsya" onclick="selectCard(this,'setting-grid')"><span class="emoji">🌾</span><span class="label">Probinsya</span><span class="sublabel">Province</span></div>
+      <div class="choice-card" data-value="Sea" data-fil="Dagat" onclick="selectCard(this,'setting-grid')"><span class="emoji">🌊</span><span class="label">Dagat</span><span class="sublabel">Sea</span></div>
+      <div class="choice-card" data-value="Forest" data-fil="Gubat" onclick="selectCard(this,'setting-grid')"><span class="emoji">🌳</span><span class="label">Gubat</span><span class="sublabel">Forest</span></div>
+      <div class="choice-card" data-value="Home" data-fil="Tahanan" onclick="selectCard(this,'setting-grid')"><span class="emoji">🏡</span><span class="label">Tahanan</span><span class="sublabel">Home</span></div>
+      <div class="choice-card" data-value="School" data-fil="Paaralan" onclick="selectCard(this,'setting-grid')"><span class="emoji">🏫</span><span class="label">Paaralan</span><span class="sublabel">School</span></div>
+      <div class="choice-card" data-value="Magical Place" data-fil="Mahiwagang Lugar" onclick="selectCard(this,'setting-grid')"><span class="emoji">✨</span><span class="label">Mahiwagang</span><span class="sublabel">Magical</span></div>
+      <div class="choice-card" data-value="Custom" data-fil="" onclick="selectCard(this,'setting-grid');document.getElementById('custom-setting-wrap').style.display='block'"><span class="emoji">✏️</span><span class="label">Custom</span></div>
+    </div>
+    <div id="custom-setting-wrap" style="display:none;margin-bottom:16px;">
+      <input type="text" id="custom-setting" placeholder="Describe the setting..." />
+    </div>
+
+    <label class="field-label">Age Range</label>
+    <div class="pills" id="age-pills">
+      <div class="pill" data-value="2-4" onclick="selectPill(this,'age-pills')">2-4</div>
+      <div class="pill" data-value="3-5" onclick="selectPill(this,'age-pills')">3-5</div>
+      <div class="pill selected" data-value="4-6" onclick="selectPill(this,'age-pills')">4-6</div>
+      <div class="pill" data-value="5-7" onclick="selectPill(this,'age-pills')">5-7</div>
+      <div class="pill" data-value="6-8" onclick="selectPill(this,'age-pills')">6-8</div>
+    </div>
+
+    <label class="field-label">Story Length</label>
+    <div class="pills" id="length-pills">
+      <div class="pill" data-value="6" onclick="selectPill(this,'length-pills')">Short — 6 pages</div>
+      <div class="pill selected" data-value="10" onclick="selectPill(this,'length-pills')">Standard — 10 pages</div>
+      <div class="pill" data-value="14" onclick="selectPill(this,'length-pills')" id="length-14">Long — 14 pages 🔒</div>
+    </div>
+
+    <label class="field-label">Values Category</label>
+    <div class="card-grid" id="values-grid" style="grid-template-columns:repeat(3,1fr);">
+      <div class="choice-card selected" data-value="Filipino Family" onclick="selectCard(this,'values-grid');updateLessons()"><span class="emoji">👨‍👩‍👧</span><span class="label">Filipino Family</span></div>
+      <div class="choice-card" data-value="Christian" onclick="selectCard(this,'values-grid');updateLessons()"><span class="emoji">✝️</span><span class="label">Christian</span></div>
+      <div class="choice-card" data-value="Life Lessons" onclick="selectCard(this,'values-grid');updateLessons()"><span class="emoji">💡</span><span class="label">Life Lessons</span></div>
+      <div class="choice-card" data-value="Environment" onclick="selectCard(this,'values-grid');updateLessons()"><span class="emoji">🌿</span><span class="label">Environment</span></div>
+      <div class="choice-card" data-value="Social-Emotional" onclick="selectCard(this,'values-grid');updateLessons()"><span class="emoji">💛</span><span class="label">Social-Emotional</span></div>
+    </div>
+
+    <label class="field-label">Specific Lesson</label>
+    <div class="pills" id="lesson-pills"></div>
+
+    <label class="field-label">Cause &amp; Effect</label>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+        <input type="checkbox" id="cause-effect-toggle" checked style="width:auto;" />
+        <span style="font-family:'Quicksand',sans-serif;font-size:14px;">Show a gentle wrong choice + consequence + resolution</span>
+      </label>
+    </div>
+
+    <label class="field-label">Primary Language</label>
+    <div class="pills" id="lang-pills">
+      <div class="pill selected" data-value="English" onclick="selectPill(this,'lang-pills');updateBilingualState()">English</div>
+      <div class="pill" data-value="Filipino" onclick="selectPill(this,'lang-pills');updateBilingualState()">Filipino</div>
+      <div class="pill" data-value="Cebuano" onclick="selectPill(this,'lang-pills');updateBilingualState()">Cebuano</div>
+      <div class="pill" data-value="Ilocano" onclick="selectPill(this,'lang-pills');updateBilingualState()">Ilocano</div>
+      <div class="pill" data-value="Taglish" onclick="selectPill(this,'lang-pills');updateBilingualState()">Taglish</div>
+    </div>
+
+    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-family:'Quicksand',sans-serif;font-size:14px;margin-bottom:16px;">
+      <input type="checkbox" id="bilingual-toggle" style="width:auto;" />
+      <span>Add English translation on every page (bilingual mode)</span>
+    </label>
+
+    <div class="btn-row">
+      <button class="btn-ghost" onclick="goToStep(1)">← Back</button>
+      <button class="btn-primary" onclick="goToStep(3)">Generate Story →</button>
+    </div>
+  </div>
+
+  <!-- Step 3: Generate -->
+  <div class="wizard-view" id="view-step3">
+    <div class="section-header">③ Your Character Profile</div>
+    <div id="character-profile-result">
+      <p style="text-align:center;color:#999;font-family:'Quicksand',sans-serif;">Generating character profile...</p>
+    </div>
+    <div id="story-gen-section" style="display:none;margin-top:24px;">
+      <div class="section-header">Write My Story</div>
+      <div class="btn-row"><button class="btn-primary" id="write-story-btn" onclick="generateStory()">✨ Write My Story →</button></div>
+    </div>
+  </div>
+
+  <!-- Step 4: Your Book -->
+  <div class="wizard-view" id="view-step4">
+    <!-- Top bar -->
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px;">
+      <div>
+        <h2 id="story-title-display" style="font-family:'Baloo 2',sans-serif;color:var(--deep-blue);"></h2>
+        <div id="story-badges"></div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn-ghost" onclick="saveStory()">💾 Save</button>
+        <div style="position:relative;">
+          <button class="btn-ghost" onclick="toggleExportMenu()">📤 Export ▼</button>
+          <div id="export-menu" style="display:none;position:absolute;right:0;top:40px;background:white;border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,0.12);padding:8px 0;min-width:180px;z-index:50;">
+            <button onclick="copyStoryText()" style="display:block;width:100%;text-align:left;padding:10px 16px;border:none;background:none;cursor:pointer;font-family:'Quicksand',sans-serif;font-size:14px;">📄 Copy Text</button>
+            <button onclick="exportDocx()" style="display:block;width:100%;text-align:left;padding:10px 16px;border:none;background:none;cursor:pointer;font-family:'Quicksand',sans-serif;font-size:14px;">📝 Export DOCX</button>
+            <button onclick="exportTxt()" style="display:block;width:100%;text-align:left;padding:10px 16px;border:none;background:none;cursor:pointer;font-family:'Quicksand',sans-serif;font-size:14px;">📋 Export TXT</button>
+            <button onclick="openCompileModal()" style="display:block;width:100%;text-align:left;padding:10px 16px;border:none;background:none;cursor:pointer;font-family:'Quicksand',sans-serif;font-size:14px;">📚 Compile Book PDF</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div id="tab-bar">
+      <button class="tab-btn active" onclick="switchTab('story')">📖 Story</button>
+      <button class="tab-btn" onclick="switchTab('prompts')">🎨 Image Prompts</button>
+      <button class="tab-btn" onclick="switchTab('character-card')">🃏 Character Card</button>
+      <button class="tab-btn" onclick="switchTab('discussion')">❓ Discussion Guide</button>
+      <button class="tab-btn" onclick="switchTab('library')">📚 My Library</button>
+    </div>
+
+    <div id="tab-story" class="tab-panel active">
+      <div id="back-cover-summary" style="background:var(--cream);border-radius:16px;padding:20px;margin-bottom:20px;"></div>
+      <div id="story-pages-container"></div>
+      <div id="moral-banner" style="display:none;background:var(--coral);color:white;border-radius:16px;padding:24px;text-align:center;margin:20px 0;"></div>
+      <div id="compile-cta"></div>
+    </div>
+
+    <div id="tab-prompts" class="tab-panel">
+      <div style="margin-bottom:12px;">
+        <label style="font-family:'Quicksand',sans-serif;font-weight:600;">Prompt Style:</label>
+        <div class="pills" id="prompt-style-pills" style="margin-top:6px;">
+          <div class="pill selected" data-value="dalle" onclick="selectPill(this,'prompt-style-pills');renderPrompts()">DALL-E / Canva</div>
+          <div class="pill" data-value="midjourney" onclick="selectPill(this,'prompt-style-pills');renderPrompts()">Midjourney</div>
+        </div>
+      </div>
+      <div id="prompts-container"></div>
+    </div>
+
+    <div id="tab-character-card" class="tab-panel">
+      <div id="character-card-print"></div>
+      <div class="btn-row"><button class="btn-ghost" onclick="window.print()">🖨️ Print Character Card</button></div>
+    </div>
+
+    <div id="tab-discussion" class="tab-panel">
+      <div id="discussion-guide-content"></div>
+      <div class="btn-row"><button class="btn-ghost" onclick="exportDiscussionPDF()">📄 Export as PDF</button></div>
+    </div>
+
+    <div id="tab-library" class="tab-panel">
+      <div id="library-container"></div>
+    </div>
+  </div>
+
+</main>
+
+<!-- Compile Modal -->
+<div class="modal-overlay" id="compile-modal">
+  <div class="modal" style="max-width:520px;">
+    <h2>Compile Your Book 📚</h2>
+    <label class="field-label">Dedication <span style="font-weight:400;color:#999;">(optional)</span></label>
+    <textarea id="compile-dedication" placeholder="This book is dedicated to..."></textarea>
+
+    <label class="field-label">Print Format</label>
+    <div class="card-grid" id="format-grid">
+      <div class="choice-card selected" data-value="A5 Booklet on A4" onclick="selectCard(this,'format-grid')"><span class="emoji">📄</span><span class="label">A5 Booklet</span><span class="sublabel">Home printing</span></div>
+      <div class="choice-card" data-value="A4 Portrait" onclick="selectCard(this,'format-grid')"><span class="emoji">📋</span><span class="label">A4 Portrait</span><span class="sublabel">Standard</span></div>
+      <div class="choice-card" data-value="US Letter / KDP" onclick="selectCard(this,'format-grid')"><span class="emoji">📚</span><span class="label">6×9 KDP</span><span class="sublabel">Amazon KDP</span></div>
+      <div class="choice-card" data-value="Square 8x8" onclick="selectCard(this,'format-grid')"><span class="emoji">🖼️</span><span class="label">Square 8×8</span><span class="sublabel">Photo books</span></div>
+    </div>
+
+    <label class="field-label">Layout Template</label>
+    <div class="pills" id="template-pills">
+      <div class="pill selected" data-value="Classic" onclick="selectPill(this,'template-pills')">Classic</div>
+      <div class="pill" data-value="Modern" onclick="selectPill(this,'template-pills')">Modern</div>
+      <div class="pill" data-value="Educational" onclick="selectPill(this,'template-pills')">Educational</div>
+    </div>
+
+    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-family:'Quicksand',sans-serif;font-size:14px;margin:8px 0;">
+      <input type="checkbox" id="compile-discussion" checked style="width:auto;" />Include Discussion Guide
+    </label>
+    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-family:'Quicksand',sans-serif;font-size:14px;margin-bottom:16px;">
+      <input type="checkbox" id="compile-print-guide" checked style="width:auto;" />Include Print Instructions
+    </label>
+
+    <div id="compile-error" style="color:#e53e3e;font-size:14px;margin-bottom:8px;display:none;"></div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn-primary" onclick="submitCompile(false)" style="flex:1;">📥 Download PDF</button>
+      <button class="btn-ghost" onclick="document.getElementById('compile-modal').classList.remove('open')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Admin View (rendered by JS when path is /admin) -->
+<div id="admin-view">
+  <div style="background:var(--deep-blue);padding:16px 24px;">
+    <h1 style="font-family:'Baloo 2',sans-serif;color:var(--sun-yellow);">🔧 Admin Dashboard</h1>
+  </div>
+  <div style="max-width:1000px;margin:24px auto;padding:0 16px;">
+    <div id="admin-nav" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;">
+      <button class="pill selected" onclick="showAdminTab('overview')">Overview</button>
+      <button class="pill" onclick="showAdminTab('ai-settings')">AI Settings</button>
+      <button class="pill" onclick="showAdminTab('users')">Users</button>
+      <button class="pill" onclick="showAdminTab('promo')">Promo Codes</button>
+      <button class="pill" onclick="showAdminTab('settings')">System Settings</button>
+    </div>
+    <div id="admin-overview" class="admin-section"></div>
+    <div id="admin-ai-settings" class="admin-section" style="display:none;"></div>
+    <div id="admin-users" class="admin-section" style="display:none;"></div>
+    <div id="admin-promo" class="admin-section" style="display:none;"></div>
+    <div id="admin-settings" class="admin-section" style="display:none;"></div>
+  </div>
+</div>
+
+<footer id="app-footer">
+  © 2025 Crafts by AlibebePH | alibebeph.com | All rights reserved.
+</footer>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════
+const state = {
+  token: localStorage.getItem('kk_token'),
+  user: null,
+  subscription: null,
+  character: null,
+  story: null,
+  savedStoryId: null,
+  authMode: 'register',
+  currentStep: 1,
+};
+
+const LOADING_MESSAGES = [
+  'Isinusulat ang kwento... ✍️',
+  'Nilikha ang mga tauhan... 🎭',
+  'Pinipili ang tamang mga salita... 💬',
+  'Dinadagdag ang kultura... 🌺',
+  'Halos tapos na! 📖',
+];
+
+// ═══════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', async () => {
+  if (window.location.pathname.startsWith('/admin')) {
+    await initAdmin();
+    return;
+  }
+
+  try {
+    const health = await api('GET', '/api/health');
+    if (health.status === 'degraded' || health.odoo?.active === 'none') {
+      const ribbon = document.getElementById('maintenance-ribbon');
+      ribbon.style.display = 'flex';
+      if (health.maintenanceUntil) {
+        document.getElementById('maintenance-until-text').textContent =
+          new Date(health.maintenanceUntil).toLocaleString('en-PH', { timeZone: 'Asia/Manila' });
+      }
+    }
+  } catch {}
+
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('ref')) sessionStorage.setItem('kk_ref', params.get('ref'));
+
+  if (state.token) {
+    await loadUser();
+  } else {
+    showGuestUI();
+  }
+
+  updateLessons();
+});
+
+async function loadUser() {
+  try {
+    const data = await api('GET', '/api/auth/me');
+    state.user = data.user;
+    state.subscription = data.subscription;
+    showLoggedInUI();
+    showWizard();
+  } catch {
+    localStorage.removeItem('kk_token');
+    state.token = null;
+    showGuestUI();
+  }
+}
+
+function showGuestUI() {
+  document.getElementById('nav-guest').style.display = 'flex';
+  document.getElementById('nav-user').style.display = 'none';
+  document.getElementById('wizard-progress').style.display = 'none';
+  document.getElementById('app-main').style.display = 'block';
+  document.getElementById('app-main').style.opacity = '0.7';
+}
+
+function showLoggedInUI() {
+  document.getElementById('nav-guest').style.display = 'none';
+  document.getElementById('nav-user').style.display = 'flex';
+  document.getElementById('user-avatar').textContent = state.user.avatarEmoji || '📚';
+  document.getElementById('user-display-name').textContent = state.user.displayName;
+}
+
+function showWizard() {
+  document.getElementById('wizard-progress').style.display = 'flex';
+  document.getElementById('app-main').style.display = 'block';
+  document.getElementById('app-main').style.opacity = '1';
+  updateProgressBar(1);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// API HELPER
+// ═══════════════════════════════════════════════════════════════
+async function api(method, endpoint, body) {
+  const res = await fetch(endpoint, {
+    method,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(state.token ? { 'Authorization': `Bearer ${state.token}` } : {}),
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const data = await res.json();
+  if (!res.ok) throw Object.assign(new Error(data.error || 'Request failed'), { status: res.status, data });
+  return data;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// AUTH
+// ═══════════════════════════════════════════════════════════════
+function openModal(mode) {
+  state.authMode = mode;
+  document.getElementById('modal-title').textContent = mode === 'register' ? 'Create Free Account' : 'Welcome Back!';
+  document.getElementById('modal-btn-text').textContent = mode === 'register' ? 'Create Free Account' : 'Log In';
+  document.getElementById('modal-toggle-text').textContent = mode === 'register' ? 'Already have an account?' : "Don't have an account?";
+  document.getElementById('modal-toggle-link').textContent = mode === 'register' ? 'Log in here' : 'Sign up free';
+  document.getElementById('register-fields').style.display = mode === 'register' ? 'block' : 'none';
+  document.getElementById('modal-error').style.display = 'none';
+  document.getElementById('auth-modal').classList.add('open');
+}
+
+function toggleAuthMode() {
+  openModal(state.authMode === 'register' ? 'login' : 'register');
+}
+
+async function submitAuth() {
+  const email = document.getElementById('auth-email').value.trim();
+  const password = document.getElementById('auth-password').value;
+  const errEl = document.getElementById('modal-error');
+  errEl.style.display = 'none';
+
+  try {
+    let data;
+    if (state.authMode === 'register') {
+      const displayName = document.getElementById('reg-name').value.trim() || email.split('@')[0];
+      const referralCode = sessionStorage.getItem('kk_ref');
+      data = await api('POST', '/api/auth/register', { email, password, displayName, referralCode });
+    } else {
+      data = await api('POST', '/api/auth/login', { email, password });
+    }
+    state.token = data.token;
+    localStorage.setItem('kk_token', data.token);
+    state.user = data.user;
+    document.getElementById('auth-modal').classList.remove('open');
+    await loadUser();
+  } catch (err) {
+    errEl.textContent = err.message;
+    errEl.style.display = 'block';
+  }
+}
+
+function logout() {
+  localStorage.removeItem('kk_token');
+  state.token = null;
+  state.user = null;
+  state.subscription = null;
+  window.location.reload();
+}
+
+function toggleDropdown() {
+  document.getElementById('user-dropdown').classList.toggle('open');
+}
+document.addEventListener('click', e => {
+  if (!document.getElementById('user-menu')?.contains(e.target)) {
+    document.getElementById('user-dropdown')?.classList.remove('open');
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════
+// WIZARD NAVIGATION
+// ═══════════════════════════════════════════════════════════════
+function goToStep(n) {
+  if (!state.token && n > 1) { openModal('register'); return; }
+
+  if (n === 2 && !document.getElementById('char-name').value.trim()) {
+    alert('Please enter your character\'s name first!');
+    return;
+  }
+
+  document.querySelectorAll('.wizard-view').forEach(v => v.classList.remove('active'));
+  document.getElementById(`view-step${n}`).classList.add('active');
+  state.currentStep = n;
+  updateProgressBar(n);
+  window.scrollTo(0, 0);
+
+  if (n === 3) generateCharacter();
+}
+
+function updateProgressBar(step) {
+  [1,2,3,4].forEach(i => {
+    const dot = document.getElementById(`step-dot-${i}`);
+    const lbl = document.getElementById(`step-lbl-${i}`);
+    const con = document.getElementById(`step-con-${i}`);
+    dot?.classList.toggle('active', i === step);
+    dot?.classList.toggle('done', i < step);
+    lbl?.classList.toggle('active', i === step);
+    if (con) con.classList.toggle('done', i < step);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// UI HELPERS
+// ═══════════════════════════════════════════════════════════════
+function selectCard(el, gridId) {
+  document.getElementById(gridId).querySelectorAll('.choice-card').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+function selectPill(el, groupId) {
+  document.getElementById(groupId).querySelectorAll('.pill').forEach(p => p.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+function togglePill(el, groupId, max) {
+  const group = document.getElementById(groupId);
+  const selected = group.querySelectorAll('.pill.selected');
+  if (el.classList.contains('selected')) {
+    el.classList.remove('selected');
+  } else if (selected.length < max) {
+    el.classList.add('selected');
+  }
+  updateCharPreview();
+}
+
+function getSelected(id, attr = 'value') {
+  const el = document.querySelector(`#${id} .selected`);
+  return el ? (el.dataset[attr] || el.dataset.value) : null;
+}
+
+function getSelectedMulti(id) {
+  return [...document.querySelectorAll(`#${id} .pill.selected`)].map(el => el.dataset.value);
+}
+
+function updateCharPreview() {
+  const name = document.getElementById('char-name').value.trim();
+  const type = getSelected('char-type-grid') || 'Character';
+  const traits = getSelectedMulti('trait-pills');
+  document.getElementById('preview-name').textContent = name || 'Your Character';
+  document.getElementById('preview-type').textContent = type;
+  const trailEl = document.getElementById('preview-traits');
+  trailEl.innerHTML = traits.map(t => `<span class="badge badge-coral">${t}</span>`).join('');
+}
+
+const LESSONS = {
+  'Filipino Family': ['Respecting Elders', 'Family Bonding', 'Helping at Home', 'Bayanihan Spirit', 'Sharing with Siblings'],
+  'Christian': ['Faith in God', 'Praying Together', 'Forgiveness', 'God\'s Love', 'Being Grateful'],
+  'Life Lessons': ['Honesty', 'Hard Work', 'Never Give Up', 'Being Responsible', 'Facing Fears'],
+  'Environment': ['Caring for Nature', 'Recycling', 'Saving Water', 'Planting Trees', 'Protecting Animals'],
+  'Social-Emotional': ['Managing Emotions', 'Making Friends', 'Empathy', 'Self-Confidence', 'Dealing with Loss'],
+};
+
+function updateLessons() {
+  const category = getSelected('values-grid') || 'Filipino Family';
+  const lessons = LESSONS[category] || [];
+  const container = document.getElementById('lesson-pills');
+  container.innerHTML = lessons.map((l, i) =>
+    `<div class="pill${i === 0 ? ' selected' : ''}" data-value="${l}" onclick="selectPill(this,'lesson-pills')">${l}</div>`
+  ).join('');
+}
+
+function updateBilingualState() {
+  const lang = getSelected('lang-pills');
+  const bilingualToggle = document.getElementById('bilingual-toggle');
+  if (lang === 'English') { bilingualToggle.checked = true; bilingualToggle.disabled = true; }
+  else { bilingualToggle.disabled = false; }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// GENERATION
+// ═══════════════════════════════════════════════════════════════
+function showLoading(msg) {
+  document.getElementById('loading-message').textContent = msg;
+  document.getElementById('loading-progress-fill').style.width = '0%';
+  document.getElementById('loading-overlay').classList.add('active');
+
+  let pct = 0;
+  let msgIdx = 0;
+  const interval = setInterval(() => {
+    pct = Math.min(pct + Math.random() * 8, 90);
+    document.getElementById('loading-progress-fill').style.width = pct + '%';
+    if (pct > (msgIdx + 1) * 18) {
+      msgIdx = (msgIdx + 1) % LOADING_MESSAGES.length;
+      document.getElementById('loading-message').textContent = LOADING_MESSAGES[msgIdx];
+    }
+  }, 600);
+  return interval;
+}
+
+function hideLoading(interval) {
+  clearInterval(interval);
+  document.getElementById('loading-progress-fill').style.width = '100%';
+  setTimeout(() => document.getElementById('loading-overlay').classList.remove('active'), 400);
+}
+
+async function generateCharacter() {
+  const name = document.getElementById('char-name').value.trim();
+  if (!name) return;
+
+  const resultEl = document.getElementById('character-profile-result');
+  resultEl.innerHTML = '<p style="text-align:center;color:#999;font-family:\'Quicksand\',sans-serif;padding:20px;">Generating character profile...</p>';
+  document.getElementById('story-gen-section').style.display = 'none';
+
+  const interval = showLoading('Nilikha ang tauhan... ✨');
+  try {
+    const char = await api('POST', '/api/generate-character', {
+      name,
+      type: getSelected('char-type-grid') || 'Animal Friend',
+      customType: document.getElementById('custom-type').value,
+      traits: getSelectedMulti('trait-pills'),
+      distinctiveFeature: document.getElementById('char-feature').value,
+      age: document.getElementById('char-age').value,
+      ageRange: getSelected('age-pills') || '4-6',
+      language: getSelected('lang-pills') || 'English',
+    });
+    state.character = char;
+    hideLoading(interval);
+    renderCharacterProfile(char);
+    document.getElementById('story-gen-section').style.display = 'block';
+  } catch (err) {
+    hideLoading(interval);
+    resultEl.innerHTML = `<p style="color:#e53e3e;text-align:center;padding:20px;">${err.message}</p><div class="btn-row"><button class="btn-ghost" onclick="generateCharacter()">🔄 Try Again</button></div>`;
+  }
+}
+
+function renderCharacterProfile(char) {
+  const el = document.getElementById('character-profile-result');
+  el.innerHTML = `
+    <div id="character-preview" style="margin-bottom:16px;">
+      <h3 style="font-family:'Baloo 2',sans-serif;color:var(--deep-blue);font-size:24px;">${char.name}</h3>
+      <p style="font-size:13px;color:#999;font-family:'Quicksand',sans-serif;margin-bottom:12px;">${char.type}</p>
+      <p style="margin-bottom:12px;">${char.personalityDescription}</p>
+      <p style="margin-bottom:12px;color:#666;">${char.appearance}</p>
+      <div class="catchphrase-bubble">"${char.catchphrase}"${char.catchphraseEnglish ? ` <em style="font-size:13px;opacity:0.7;">(${char.catchphraseEnglish})</em>` : ''}</div>
+      <p style="font-size:13px;color:#666;margin-bottom:12px;">🌟 Fun Fact: ${char.funFact}</p>
+      ${char.stats ? `
+        <div>
+          ${Object.entries(char.stats).map(([k, v]) => `
+            <div class="stat-bar-wrap">
+              <div class="stat-label"><span>${k}</span><span>${v}%</span></div>
+              <div class="stat-bar"><div class="stat-bar-fill" style="width:${v}%"></div></div>
+            </div>`).join('')}
+        </div>` : ''}
+      <div style="margin-top:16px;">
+        <label class="field-label" style="margin-top:0;">🎨 Character Design Prompt</label>
+        <div class="prompt-card"><p class="prompt-text">${char.designPrompt}</p></div>
+        <button class="copy-btn" onclick="navigator.clipboard.writeText(this.closest('.prompt-card').previousElementSibling.querySelector('.prompt-text').textContent).then(()=>this.textContent='✅ Copied!')">📋 Copy Prompt</button>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn-ghost" onclick="generateCharacter()">🔄 Regenerate</button>
+    </div>`;
+}
+
+async function generateStory() {
+  if (!state.character) { alert('Please generate a character first!'); return; }
+
+  const lang = getSelected('lang-pills') || 'English';
+  const isBilingual = lang === 'English' || document.getElementById('bilingual-toggle').checked;
+  const pageCount = parseInt(getSelected('length-pills') || '10');
+
+  if (pageCount === 14 && state.subscription?.tier === 'free') {
+    alert('Long stories (14 pages) require a Pro or Business plan.');
+    return;
+  }
+
+  const interval = showLoading('Isinusulat ang kwento... ✍️');
+  document.getElementById('write-story-btn').disabled = true;
+
+  try {
+    const story = await api('POST', '/api/generate-story', {
+      character: state.character,
+      tone: getSelected('tone-pills') || 'Gentle',
+      setting: getSelected('setting-grid') || 'Province',
+      settingFilipino: document.querySelector('#setting-grid .selected')?.dataset.fil || '',
+      ageRange: getSelected('age-pills') || '4-6',
+      pageCount,
+      valuesCategory: getSelected('values-grid') || 'Filipino Family',
+      specificLesson: getSelected('lesson-pills') || '',
+      causeEffectEnabled: document.getElementById('cause-effect-toggle').checked,
+      language: lang,
+      isBilingual,
+    });
+    state.story = story;
+    hideLoading(interval);
+    goToStep(4);
+    renderBook();
+  } catch (err) {
+    hideLoading(interval);
+    document.getElementById('write-story-btn').disabled = false;
+    alert(err.message || 'Story generation failed. Please try again.');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// BOOK RENDERING
+// ═══════════════════════════════════════════════════════════════
+function renderBook() {
+  const story = state.story;
+  if (!story) return;
+
+  document.getElementById('story-title-display').textContent = story.title || 'My Story';
+  document.getElementById('story-badges').innerHTML = `
+    <span class="badge badge-blue">${state.character?.type || ''}</span>
+    <span class="badge badge-green">${getSelected('lang-pills') || 'English'}</span>
+    <span class="badge badge-coral">${getSelected('age-pills') || '4-6'}</span>`;
+
+  document.getElementById('back-cover-summary').innerHTML = `
+    <p style="font-family:'Baloo 2',sans-serif;color:var(--deep-blue);font-size:18px;margin-bottom:8px;">📖 ${story.title}</p>
+    <p style="color:#666;">${story.backCoverSummary || ''}</p>`;
+
+  const pagesEl = document.getElementById('story-pages-container');
+  pagesEl.innerHTML = (story.pages || []).map(p => `
+    <div class="story-page-card" id="page-card-${p.pageNumber}">
+      <div class="page-number-badge">${p.pageNumber}</div>
+      <p class="story-text">${p.text}</p>
+      ${p.textEnglish ? `<p class="translation-text">${p.textEnglish}</p>` : ''}
+      ${p.causeEffect ? `<div class="cause-effect-box">⚡ <strong>Cause &amp; Effect:</strong> ${p.causeEffect.wrongChoice} → ${p.causeEffect.consequence} → ${p.causeEffect.resolution}</div>` : ''}
+      ${p.illustrationIdea ? `<div class="illus-idea">🖼️ <em>${p.illustrationIdea}</em></div>` : ''}
+      <div class="page-actions">
+        <button class="btn-ghost" style="font-size:13px;padding:6px 14px;" onclick="regeneratePage(${p.pageNumber})">🔄 Regenerate</button>
+      </div>
+    </div>`).join('');
+
+  if (story.moral) {
+    const moralEl = document.getElementById('moral-banner');
+    moralEl.style.display = 'block';
+    moralEl.innerHTML = `<h3 style="font-family:'Baloo 2',sans-serif;font-size:20px;margin-bottom:8px;">The Moral of the Story</h3>
+      <p style="font-size:17px;">${story.moral}</p>
+      ${story.moralEnglish ? `<p style="opacity:0.85;font-size:14px;margin-top:6px;">${story.moralEnglish}</p>` : ''}`;
+  }
+
+  const compileEl = document.getElementById('compile-cta');
+  if (state.subscription?.canCompileBook) {
+    compileEl.innerHTML = `<div style="text-align:center;margin:20px 0;"><button class="btn-primary" onclick="openCompileModal()">📚 Compile My Book</button></div>`;
+  } else {
+    compileEl.innerHTML = `<div class="upgrade-banner"><h3>📚 Compile as a PDF Book</h3><p>Upgrade to Pro to compile your story into a print-ready book.</p><button onclick="openModal('register')">Upgrade to Pro — ₱199/mo</button></div>`;
+  }
+
+  renderPrompts();
+  renderCharacterCard();
+  renderDiscussionGuide();
+}
+
+function renderPrompts() {
+  const story = state.story;
+  if (!story) return;
+  const isMJ = getSelected('prompt-style-pills') === 'midjourney';
+  const formatPrompt = p => isMJ ? p + ' --ar 16:9 --style raw --v 6' : p;
+
+  const container = document.getElementById('prompts-container');
+  let html = '';
+
+  if (story.characterBlueprintPrompt) {
+    html += `<div class="prompt-card" style="border-color:var(--sun-yellow);">
+      <strong style="font-family:'Quicksand',sans-serif;">🎨 Character Blueprint (use for all pages)</strong>
+      <p class="prompt-text" style="margin-top:8px;">${formatPrompt(story.characterBlueprintPrompt)}</p>
+      <div class="prompt-actions">
+        <button class="copy-btn" onclick="navigator.clipboard.writeText(this.closest('.prompt-card').querySelector('.prompt-text').textContent).then(()=>this.textContent='✅ Copied!')">📋 Copy</button>
+      </div>
+    </div>`;
+  }
+
+  (story.pages || []).forEach(p => {
+    const canGenerate = state.subscription?.imagesPerMonth !== 0;
+    html += `<div class="prompt-card">
+      <strong style="font-family:'Quicksand',sans-serif;font-size:13px;">Page ${p.pageNumber}</strong>
+      <p class="prompt-text" style="margin-top:6px;">${formatPrompt(p.imagePrompt || '')}</p>
+      <div class="prompt-actions">
+        <button class="copy-btn" onclick="navigator.clipboard.writeText(this.closest('.prompt-card').querySelector('.prompt-text').textContent).then(()=>this.textContent='✅ Copied!')">📋 Copy</button>
+        ${canGenerate ? `<button class="btn-ghost" style="font-size:13px;padding:6px 14px;" onclick="generatePageImage(${p.pageNumber}, this.closest('.prompt-card').querySelector('.prompt-text').textContent)">✨ Generate Image</button>` : ''}
+        <div id="img-result-${p.pageNumber}"></div>
+      </div>
+    </div>`;
+  });
+
+  if (!state.subscription || state.subscription.imagesPerMonth === 0) {
+    html += `<div class="upgrade-banner"><h3>✨ Generate Images In-App</h3><p>Upgrade to Pro to generate images directly inside Kwento Ko.</p><button onclick="openModal('register')">Upgrade to Pro</button></div>`;
+  }
+
+  container.innerHTML = html;
+}
+
+function renderCharacterCard() {
+  const char = state.character;
+  if (!char) return;
+  document.getElementById('character-card-print').innerHTML = `
+    <h2 style="font-family:'Baloo 2',sans-serif;color:var(--deep-blue);text-align:center;">${char.name}</h2>
+    <p style="text-align:center;color:#999;font-family:'Quicksand',sans-serif;margin-bottom:12px;">${char.type}</p>
+    <div class="catchphrase-bubble" style="text-align:center;">"${char.catchphrase}"</div>
+    <p style="margin:12px 0;">${char.personalityDescription}</p>
+    <p style="color:#666;font-size:14px;">👁️ ${char.appearance}</p>
+    <p style="color:#666;font-size:14px;margin-top:8px;">🌟 ${char.funFact}</p>
+    ${char.stats ? `<div style="margin-top:12px;">${Object.entries(char.stats).map(([k,v]) => `
+      <div class="stat-bar-wrap"><div class="stat-label"><span>${k}</span><span>${v}%</span></div>
+      <div class="stat-bar"><div class="stat-bar-fill" style="width:${v}%"></div></div></div>`).join('')}</div>` : ''}`;
+}
+
+function renderDiscussionGuide() {
+  const story = state.story;
+  const char = state.character;
+  const ageRange = getSelected('age-pills') || '4-6';
+  const values = getSelected('values-grid') || 'Filipino Family';
+  const lesson = getSelected('lesson-pills') || '';
+
+  document.getElementById('discussion-guide-content').innerHTML = `
+    <div class="admin-card">
+      <h3>📚 For Parents &amp; Teachers</h3>
+      <p style="font-size:14px;color:#666;margin-bottom:16px;">Use these questions to spark conversation about <em>${story?.title || 'this story'}</em> with ${ageRange}-year-olds.</p>
+
+      <h4 style="font-family:'Quicksand',sans-serif;color:var(--deep-blue);margin-bottom:8px;">Before Reading</h4>
+      <ul style="font-size:14px;color:#555;padding-left:20px;margin-bottom:16px;">
+        <li>What do you think this story is about?</li>
+        <li>Have you ever met someone like ${char?.name || 'the character'}?</li>
+        <li>What would you do in a ${getSelected('setting-grid') || 'this'} setting?</li>
+      </ul>
+
+      <h4 style="font-family:'Quicksand',sans-serif;color:var(--deep-blue);margin-bottom:8px;">While Reading</h4>
+      <ul style="font-size:14px;color:#555;padding-left:20px;margin-bottom:16px;">
+        <li>How is ${char?.name || 'the character'} feeling right now?</li>
+        <li>What do you think will happen next?</li>
+        <li>Why did ${char?.name || 'the character'} make that choice?</li>
+      </ul>
+
+      <h4 style="font-family:'Quicksand',sans-serif;color:var(--deep-blue);margin-bottom:8px;">After Reading</h4>
+      <ul style="font-size:14px;color:#555;padding-left:20px;margin-bottom:16px;">
+        <li>What was the most important lesson in this story?</li>
+        <li>How can we apply the lesson of <em>${lesson}</em> in our daily life?</li>
+        <li>If you could add one more page, what would happen?</li>
+      </ul>
+
+      ${values === 'Christian' ? `<h4 style="font-family:'Quicksand',sans-serif;color:var(--deep-blue);margin-bottom:8px;">🙏 Prayer Prompt</h4>
+      <p style="font-size:14px;color:#555;margin-bottom:16px;">Let's pray together: "Dear God, help us to be like ${char?.name || 'our hero'} — ${char?.personalityDescription?.split('.')[0] || 'brave and kind'}. Amen."</p>` : ''}
+
+      <h4 style="font-family:'Quicksand',sans-serif;color:var(--deep-blue);margin-bottom:8px;">🎨 Creative Activity</h4>
+      <p style="font-size:14px;color:#555;">Draw your favorite scene from the story. What colors would you use? What is ${char?.name || 'the character'} doing?</p>
+    </div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// STORY ACTIONS
+// ═══════════════════════════════════════════════════════════════
+async function regeneratePage(pageNum) {
+  const btn = document.querySelector(`#page-card-${pageNum} button`);
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Regenerating...'; }
+
+  try {
+    const page = await api('POST', '/api/regenerate-page', {
+      character: state.character,
+      pageNumber: pageNum,
+      tone: getSelected('tone-pills') || 'Gentle',
+      language: getSelected('lang-pills') || 'English',
+      isBilingual: document.getElementById('bilingual-toggle').checked,
+    });
+    const idx = state.story.pages.findIndex(p => p.pageNumber === pageNum);
+    if (idx !== -1) state.story.pages[idx] = page;
+
+    const card = document.getElementById(`page-card-${pageNum}`);
+    card.querySelector('.story-text').textContent = page.text;
+    if (page.textEnglish) {
+      const transEl = card.querySelector('.translation-text');
+      if (transEl) transEl.textContent = page.textEnglish;
+    }
+    if (btn) { btn.disabled = false; btn.textContent = '🔄 Regenerate'; }
+  } catch (err) {
+    alert(err.message);
+    if (btn) { btn.disabled = false; btn.textContent = '🔄 Regenerate'; }
+  }
+}
+
+async function generatePageImage(pageNum, prompt) {
+  const resultEl = document.getElementById(`img-result-${pageNum}`);
+  resultEl.innerHTML = '<span style="font-size:13px;color:#999;">Generating...</span>';
+
+  try {
+    const data = await api('POST', '/api/generate-image', {
+      promptText: prompt,
+      storyId: state.savedStoryId,
+      pageIndex: pageNum,
+    });
+    resultEl.innerHTML = `<img src="${data.imageUrl}" style="max-width:100%;border-radius:12px;margin-top:8px;" />`;
+  } catch (err) {
+    resultEl.innerHTML = `<span style="color:#e53e3e;font-size:13px;">${err.message}</span>`;
+  }
+}
+
+async function saveStory() {
+  if (!state.story || !state.token) { openModal('register'); return; }
+  try {
+    if (state.savedStoryId) {
+      await api('PUT', `/api/library/${state.savedStoryId}`, { title: state.story.title, storyData: state.story });
+    } else {
+      const res = await api('POST', '/api/library', {
+        title: state.story.title,
+        language: getSelected('lang-pills') || 'English',
+        tone: getSelected('tone-pills') || 'Gentle',
+        ageRange: getSelected('age-pills') || '4-6',
+        characterName: state.character?.name,
+        pageCount: state.story.pages?.length,
+        storyData: state.story,
+      });
+      state.savedStoryId = res.id;
+    }
+    alert('✅ Story saved to your library!');
+  } catch (err) {
+    alert(err.message);
+  }
+}
+
+function toggleExportMenu() {
+  const menu = document.getElementById('export-menu');
+  menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+}
+
+function copyStoryText() {
+  if (!state.story?.pages) return;
+  const text = state.story.pages.map(p => `Page ${p.pageNumber}:\n${p.text}${p.textEnglish ? '\n' + p.textEnglish : ''}`).join('\n\n');
+  navigator.clipboard.writeText(text).then(() => alert('✅ Story text copied!'));
+  document.getElementById('export-menu').style.display = 'none';
+}
+
+function exportTxt() {
+  if (!state.story) return;
+  const text = state.story.pages.map(p => `Page ${p.pageNumber}:\n${p.text}${p.textEnglish ? '\n[EN] ' + p.textEnglish : ''}`).join('\n\n');
+  const blob = new Blob([text], { type: 'text/plain' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = `${state.story.title || 'story'}.txt`; a.click();
+  document.getElementById('export-menu').style.display = 'none';
+}
+
+function exportDocx() {
+  alert('DOCX export requires a Pro plan.');
+  document.getElementById('export-menu').style.display = 'none';
+}
+
+function exportDiscussionPDF() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  doc.setFontSize(18);
+  doc.text(`Discussion Guide — ${state.story?.title || 'My Story'}`, 20, 20);
+  doc.setFontSize(12);
+  doc.text('Generated by Kwento Ko | alibebeph.com', 20, 30);
+  const text = document.getElementById('discussion-guide-content').innerText;
+  const lines = doc.splitTextToSize(text, 170);
+  doc.text(lines, 20, 45);
+  doc.save(`${state.story?.title || 'discussion-guide'}.pdf`);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// COMPILE MODAL
+// ═══════════════════════════════════════════════════════════════
+function openCompileModal() {
+  if (!state.subscription?.canCompileBook) { openModal('register'); return; }
+  document.getElementById('compile-modal').classList.add('open');
+  document.getElementById('export-menu').style.display = 'none';
+}
+
+async function submitCompile(emailPDF) {
+  if (!state.savedStoryId) {
+    document.getElementById('compile-error').textContent = 'Please save your story first before compiling.';
+    document.getElementById('compile-error').style.display = 'block';
+    return;
+  }
+
+  const format = getSelected('format-grid') || 'A5 Booklet on A4';
+  const template = getSelected('template-pills') || 'Classic';
+  document.getElementById('compile-error').style.display = 'none';
+
+  const btn = document.querySelector('#compile-modal .btn-primary');
+  btn.disabled = true; btn.textContent = '⏳ Compiling...';
+
+  try {
+    const res = await fetch('/api/compile-book', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.token}` },
+      body: JSON.stringify({
+        storyId: state.savedStoryId,
+        format,
+        dedication: document.getElementById('compile-dedication').value,
+        includeDiscussionGuide: document.getElementById('compile-discussion').checked,
+        includePrintGuide: document.getElementById('compile-print-guide').checked,
+        layoutTemplate: template,
+        emailPDF,
+      }),
+    });
+    if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Compilation failed'); }
+
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url;
+    a.download = `${state.story?.title || 'kwento-ko-book'}.pdf`; a.click();
+    document.getElementById('compile-modal').classList.remove('open');
+  } catch (err) {
+    document.getElementById('compile-error').textContent = err.message;
+    document.getElementById('compile-error').style.display = 'block';
+  } finally {
+    btn.disabled = false; btn.textContent = '📥 Download PDF';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// LIBRARY
+// ═══════════════════════════════════════════════════════════════
+function switchTab(name) {
+  document.querySelectorAll('.tab-btn').forEach((b, i) => {
+    const names = ['story','prompts','character-card','discussion','library'];
+    b.classList.toggle('active', names[i] === name);
+  });
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById(`tab-${name}`).classList.add('active');
+  if (name === 'library') loadLibrary();
+}
+
+async function loadLibrary() {
+  const container = document.getElementById('library-container');
+  if (!state.token) {
+    container.innerHTML = `<div class="upgrade-banner"><h3>📚 Save Your Stories</h3><p>Create a free account to save up to 5 stories.</p><button onclick="openModal('register')">Create Free Account</button></div>`;
+    return;
+  }
+  container.innerHTML = '<p style="text-align:center;color:#999;font-family:\'Quicksand\',sans-serif;">Loading library...</p>';
+  try {
+    const data = await api('GET', '/api/library');
+    if (!data.stories.length) {
+      container.innerHTML = '<p style="text-align:center;color:#999;padding:20px;font-family:\'Quicksand\',sans-serif;">No saved stories yet. Generate a story and click 💾 Save!</p>';
+      return;
+    }
+    container.innerHTML = data.stories.map(s => `
+      <div class="library-card">
+        <span class="story-emoji">📖</span>
+        <div style="flex:1;">
+          <h4>${s.title}</h4>
+          <div class="meta">
+            <span class="badge badge-blue">${s.language}</span>
+            ${s.character_name ? `<span class="badge badge-green">${s.character_name}</span>` : ''}
+            <span>${new Date(s.created_at).toLocaleDateString('en-PH')}</span>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn-ghost" style="font-size:13px;padding:6px 14px;" onclick="deleteStory(${s.id},this)">🗑️</button>
+        </div>
+      </div>`).join('');
+  } catch (err) {
+    container.innerHTML = `<p style="color:#e53e3e;text-align:center;">${err.message}</p>`;
+  }
+}
+
+function showLibrary() {
+  document.getElementById('user-dropdown').classList.remove('open');
+  if (state.currentStep === 4) { switchTab('library'); return; }
+  goToStep(4);
+  setTimeout(() => switchTab('library'), 100);
+}
+
+async function deleteStory(id, btn) {
+  if (!confirm('Delete this story?')) return;
+  try {
+    await api('DELETE', `/api/library/${id}`);
+    btn.closest('.library-card').remove();
+  } catch (err) { alert(err.message); }
+}
+
+function showReferral() {
+  document.getElementById('user-dropdown').classList.remove('open');
+  if (!state.user) return;
+  const link = `${window.location.origin}/?ref=${state.user.referralCode}`;
+  prompt('Share your referral link — earn 5 bonus stories per signup:', link);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ADMIN DASHBOARD
+// ═══════════════════════════════════════════════════════════════
+let adminToken = localStorage.getItem('kk_admin_token');
+
+async function initAdmin() {
+  document.getElementById('app-main').style.display = 'none';
+  document.getElementById('wizard-progress').style.display = 'none';
+  document.getElementById('admin-view').classList.add('active');
+
+  if (!adminToken) {
+    const email = prompt('Admin email:');
+    const password = prompt('Admin password:');
+    try {
+      const res = await fetch('/api/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json();
+      if (!data.token) { alert('Login failed'); return; }
+      adminToken = data.token;
+      localStorage.setItem('kk_admin_token', adminToken);
+    } catch { alert('Admin login failed'); return; }
+  }
+
+  await loadAdminOverview();
+}
+
+async function adminApi(method, endpoint, body) {
+  const res = await fetch(endpoint, {
+    method,
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${adminToken}` },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if (res.status === 401) { localStorage.removeItem('kk_admin_token'); window.location.reload(); }
+  return res.json();
+}
+
+function showAdminTab(name) {
+  document.querySelectorAll('#admin-nav .pill').forEach(p => p.classList.remove('selected'));
+  event.target.classList.add('selected');
+  document.querySelectorAll('.admin-section').forEach(s => s.style.display = 'none');
+  document.getElementById(`admin-${name}`).style.display = 'block';
+
+  if (name === 'overview') loadAdminOverview();
+  else if (name === 'ai-settings') loadAdminAISettings();
+  else if (name === 'users') loadAdminUsers();
+  else if (name === 'promo') loadAdminPromo();
+  else if (name === 'settings') loadAdminSettings();
+}
+
+async function loadAdminOverview() {
+  const el = document.getElementById('admin-overview');
+  el.innerHTML = '<p style="text-align:center;color:#999;padding:20px;">Loading...</p>';
+  const data = await adminApi('GET', '/api/admin/overview');
+  el.innerHTML = `
+    <div class="admin-card">
+      <h3>Users</h3>
+      <div class="stat-grid">
+        <div class="stat-item"><div class="number">${data.users?.total || 0}</div><div class="label">Total</div></div>
+        <div class="stat-item"><div class="number">${data.users?.free || 0}</div><div class="label">Free</div></div>
+        <div class="stat-item"><div class="number">${data.users?.pro || 0}</div><div class="label">Pro</div></div>
+        <div class="stat-item"><div class="number">${data.users?.business || 0}</div><div class="label">Business</div></div>
+        <div class="stat-item"><div class="number">${data.users?.tester || 0}</div><div class="label">Testers</div></div>
+      </div>
+    </div>
+    <div class="admin-card">
+      <h3>Activity Today</h3>
+      <div class="stat-grid">
+        <div class="stat-item"><div class="number">${data.todayStories || 0}</div><div class="label">Stories</div></div>
+        <div class="stat-item"><div class="number">${data.todayImages || 0}</div><div class="label">Images</div></div>
+        <div class="stat-item"><div class="number">${data.todayCompiles || 0}</div><div class="label">Compilations</div></div>
+        <div class="stat-item"><div class="number">${data.pendingOdooSync || 0}</div><div class="label">Pending Sync</div></div>
+      </div>
+    </div>
+    <div class="admin-card">
+      <h3>System Status</h3>
+      <p style="font-size:14px;">Odoo Primary: <strong>${data.odoo?.primary || 'unknown'}</strong> | Secondary: <strong>${data.odoo?.secondary || 'unknown'}</strong></p>
+      <p style="font-size:14px;">Active: <strong>${data.odoo?.active || 'none'}</strong> | Failovers: ${data.odoo?.failoverCount || 0}</p>
+      <p style="font-size:14px;margin-top:8px;">Text AI: <strong>${data.ai?.textProvider} / ${data.ai?.textModel}</strong></p>
+      <p style="font-size:14px;">Image AI: <strong>${data.ai?.imageProvider} / ${data.ai?.imageModel}</strong></p>
+    </div>`;
+}
+
+async function loadAdminAISettings() {
+  const el = document.getElementById('admin-ai-settings');
+  el.innerHTML = '<p style="text-align:center;color:#999;padding:20px;">Loading...</p>';
+  const data = await adminApi('GET', '/api/admin/ai-settings');
+
+  const renderProviders = (feature, providers) => {
+    const featureNames = { text: '📝 Story Text AI', image: '🎨 Image Generation AI', compile: '📚 Book Compilation AI' };
+    return `<div class="admin-card">
+      <h3>${featureNames[feature]}</h3>
+      ${providers.map(p => `
+        <div class="provider-card ${p.is_active ? 'active-provider' : ''}">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <strong style="font-family:'Quicksand',sans-serif;">${p.provider.toUpperCase()}</strong>
+            ${p.is_active ? '<span class="badge badge-green">ACTIVE</span>' :
+              `<button class="btn-ghost" style="font-size:12px;padding:4px 10px;" onclick="switchProvider('${feature}','${p.provider}')">Set Active</button>`}
+          </div>
+          <p style="font-size:13px;color:#666;">🔑 Key: ${p.api_key_hint || 'Not set'} | 🤖 Model: ${p.model}</p>
+          <p style="font-size:13px;color:#666;">
+            ${p.last_test_ok === true ? '✅' : p.last_test_ok === false ? '❌' : '⚪'}
+            ${p.last_test_msg || 'Never tested'}
+          </p>
+          <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
+            <button class="copy-btn" onclick="testAIProvider('${feature}','${p.provider}')">▶ Test</button>
+            <button class="copy-btn" onclick="promptUpdateKey('${feature}','${p.provider}')">✏️ Update Key</button>
+          </div>
+        </div>`).join('')}
+    </div>`;
+  };
+
+  el.innerHTML = renderProviders('text', data.text || []) +
+                 renderProviders('image', data.image || []) +
+                 renderProviders('compile', data.compile || []);
+}
+
+async function testAIProvider(feature, provider) {
+  if (!confirm(`Test ${provider} for ${feature}?`)) return;
+  const data = await adminApi('POST', '/api/admin/ai-settings/test', { feature, provider, apiKey: '__USE_STORED__' });
+  alert(`${data.ok ? '✅' : '❌'} ${data.message} (${data.latencyMs}ms)`);
+  loadAdminAISettings();
+}
+
+async function switchProvider(feature, provider) {
+  if (!confirm(`Switch ${feature} AI to ${provider}?`)) return;
+  await adminApi('PUT', `/api/admin/ai-settings/${feature}/active`, { provider });
+  loadAdminAISettings();
+}
+
+async function promptUpdateKey(feature, provider) {
+  const key = prompt(`Enter new ${provider} API key:`);
+  if (!key) return;
+  const data = await adminApi('PUT', `/api/admin/ai-settings/${feature}/${provider}`, { apiKey: key });
+  alert(`${data.ok ? '✅ Key updated.' : '❌ Failed.'} Test: ${data.testResult?.message}`);
+  loadAdminAISettings();
+}
+
+async function loadAdminUsers() {
+  const el = document.getElementById('admin-users');
+  const search = prompt('Search by email (or press Enter for all):') || '';
+  const data = await adminApi('GET', `/api/admin/users?search=${encodeURIComponent(search)}&limit=50`);
+  el.innerHTML = `<div class="admin-card">
+    <h3>Users (${data.total} total)</h3>
+    <table>
+      <thead><tr><th>Email</th><th>Tier</th><th>Joined</th><th>Actions</th></tr></thead>
+      <tbody>
+        ${data.users.map(u => `<tr>
+          <td>${u.email}</td>
+          <td><span class="badge badge-${u.tier==='pro'?'blue':u.tier==='business'?'green':'coral'}">${u.is_tester?'🧪 ':''} ${u.tier}</span></td>
+          <td style="font-size:12px;">${new Date(u.created_at).toLocaleDateString('en-PH')}</td>
+          <td>
+            <button class="copy-btn" onclick="upgradeTier(${u.id},'pro')">→ Pro</button>
+            <button class="copy-btn" onclick="upgradeTier(${u.id},'free')">→ Free</button>
+            <button class="copy-btn" onclick="assignTester(${u.id})">🧪 Tester</button>
+          </td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+  </div>`;
+}
+
+async function upgradeTier(userId, tier) {
+  await adminApi('PUT', `/api/admin/users/${userId}/tier`, { tier });
+  alert(`✅ User upgraded to ${tier}`);
+  loadAdminUsers();
+}
+
+async function assignTester(userId) {
+  const storiesPerDay = parseInt(prompt('Stories per day (-1 = unlimited):', '-1')) || -1;
+  const note = prompt('Tester note (e.g. "Beta tester — report bugs"):') || '';
+  await adminApi('POST', `/api/admin/users/${userId}/tester`, { storiesPerDay, note });
+  alert('✅ Tester status assigned');
+}
+
+async function loadAdminPromo() {
+  const el = document.getElementById('admin-promo');
+  const data = await adminApi('GET', '/api/admin/promo-codes');
+  el.innerHTML = `<div class="admin-card">
+    <h3>Promo Codes</h3>
+    <button class="btn-primary" style="margin-bottom:16px;" onclick="createPromo()">+ Create Code</button>
+    <table>
+      <thead><tr><th>Code</th><th>Discount</th><th>Uses</th><th>Expires</th><th>Actions</th></tr></thead>
+      <tbody>
+        ${data.codes.map(c => `<tr>
+          <td><strong>${c.code}</strong></td>
+          <td>${c.discount_type === 'percent' ? c.discount_value + '%' : '₱' + c.discount_value} off</td>
+          <td>${c.uses_count}${c.max_uses ? '/' + c.max_uses : ''}</td>
+          <td style="font-size:12px;">${c.expires_at ? new Date(c.expires_at).toLocaleDateString('en-PH') : 'No expiry'}</td>
+          <td><button class="copy-btn" onclick="deletePromo(${c.id})">🗑️</button></td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+  </div>`;
+}
+
+async function createPromo() {
+  const code = prompt('Promo code (e.g. LAUNCH50):');
+  if (!code) return;
+  const discountType = confirm('Percentage discount? (Cancel for fixed PHP amount)') ? 'percent' : 'fixed';
+  const discountValue = parseFloat(prompt(`${discountType === 'percent' ? 'Percentage' : 'PHP amount'} discount:`));
+  if (isNaN(discountValue)) return;
+  await adminApi('POST', '/api/admin/promo-codes', { code, discountType, discountValue });
+  alert('✅ Promo code created');
+  loadAdminPromo();
+}
+
+async function deletePromo(id) {
+  if (!confirm('Delete this promo code?')) return;
+  await adminApi('DELETE', `/api/admin/promo-codes/${id}`);
+  loadAdminPromo();
+}
+
+async function loadAdminSettings() {
+  const el = document.getElementById('admin-settings');
+  const data = await adminApi('GET', '/api/admin/settings');
+  el.innerHTML = `<div class="admin-card">
+    <h3>System Settings</h3>
+    <label class="field-label">Maintenance Mode</label>
+    <select id="s-maintenance" style="margin-bottom:12px;">
+      <option value="false" ${data.maintenance_mode!=='true'?'selected':''}>Off</option>
+      <option value="true" ${data.maintenance_mode==='true'?'selected':''}>On</option>
+    </select>
+    <label class="field-label">Maintenance Message</label>
+    <input type="text" id="s-msg" value="${data.maintenance_message||''}" style="margin-bottom:12px;" />
+    <label class="field-label">Lifetime Plan Available</label>
+    <select id="s-lifetime" style="margin-bottom:12px;">
+      <option value="true" ${data.lifetime_plan_active!=='false'?'selected':''}>Yes</option>
+      <option value="false" ${data.lifetime_plan_active==='false'?'selected':''}>No</option>
+    </select>
+    <label class="field-label">AI Cost Alert Threshold (PHP)</label>
+    <input type="number" id="s-cost" value="${data.ai_cost_alert_threshold_php||5000}" style="margin-bottom:16px;" />
+    <button class="btn-primary" onclick="saveAdminSettings()">Save Settings</button>
+  </div>`;
+}
+
+async function saveAdminSettings() {
+  await adminApi('PUT', '/api/admin/settings', {
+    maintenance_mode: document.getElementById('s-maintenance').value,
+    maintenance_message: document.getElementById('s-msg').value,
+    lifetime_plan_active: document.getElementById('s-lifetime').value,
+    ai_cost_alert_threshold_php: document.getElementById('s-cost').value,
+  });
+  alert('✅ Settings saved');
+}
+</script>
+</body>
+</html>
