@@ -832,7 +832,7 @@ function checkStoryLimit(userId) {
   if (counters.stories_today >= limits.storiesPerDay) {
     return { allowed: false, reason: `Daily limit of ${limits.storiesPerDay} stories reached. Resets at midnight.` };
   }
-  if (counters.stories_month >= limits.storiesPerMonth) {
+  if (limits.storiesPerMonth !== -1 && counters.stories_month >= limits.storiesPerMonth) {
     return { allowed: false, reason: `Monthly limit of ${limits.storiesPerMonth} stories reached.` };
   }
   return { allowed: true, limits };
@@ -1001,10 +1001,10 @@ app.post('/api/generate-story', authMiddleware, genRateLimit, async (req, res) =
 });
 
 app.post('/api/regenerate-page', authMiddleware, genRateLimit, async (req, res) => {
-  const { character, pageNumber, tone, language, isBilingual, storyContext } = req.body;
+  const { character, pageNumber, tone, language, isBilingual, storyContext, ageRange } = req.body;
   if (!character || !pageNumber) return res.status(400).json({ error: 'character and pageNumber required' });
 
-  const systemPrompt = buildStorySystemPrompt(language || 'English', '4-6');
+  const systemPrompt = buildStorySystemPrompt(language || 'English', ageRange || '4-6');
   const userPrompt = `Regenerate only page ${pageNumber} of a children's story.
 Character: ${JSON.stringify(character)}
 Story context (previous pages summary): ${storyContext || 'Beginning of story'}
@@ -1026,6 +1026,12 @@ Output this exact JSON for ONE page only:
     const raw = await aiFactory.generateText(systemPrompt, userPrompt);
     res.json(safeParseAIJson(raw));
   } catch (err) {
+    const isKeyError = /invalid.*api|authentication|unauthorized|quota|billing/i.test(err.message);
+    if (isKeyError) {
+      const config = aiSettings.getActiveProvider('text');
+      if (config) db.prepare('UPDATE ai_provider_settings SET last_test_ok = 0, last_test_msg = ? WHERE feature = ? AND provider = ?').run(err.message, 'text', config.provider);
+      return res.status(503).json({ error: 'Story generation is temporarily unavailable. Please try again in a few minutes.' });
+    }
     console.error('regenerate-page error:', err);
     res.status(500).json({ error: 'Page regeneration failed. Please try again.' });
   }
