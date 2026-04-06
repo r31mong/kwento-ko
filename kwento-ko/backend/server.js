@@ -1270,6 +1270,7 @@ app.post('/api/generate-image', authMiddleware, genRateLimit, async (req, res) =
     }
 
     const imgProvider = aiSettings.getActiveProvider('image');
+    db.prepare('INSERT OR IGNORE INTO usage_counters (user_id) VALUES (?)').run(req.userId);
     db.prepare('UPDATE usage_counters SET images_month = images_month + 1 WHERE user_id = ?').run(req.userId);
     db.prepare('INSERT INTO usage_log (user_id, action, provider, model) VALUES (?, ?, ?, ?)')
       .run(req.userId, 'image_generate', imgProvider?.provider || 'unknown', imgProvider?.model || 'unknown');
