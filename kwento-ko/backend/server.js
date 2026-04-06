@@ -656,7 +656,381 @@ app.put('/api/admin/ai-settings/:feature/:provider', adminMiddleware, async (req
   res.json({ ok: true, testResult });
 });
 
-// Task 5:  AIProviderFactory
+// ── AI Helpers ────────────────────────────────────────────────────────────────
+function safeParseAIJson(raw) {
+  let cleaned = raw.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
+  cleaned = cleaned.replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
+  try {
+    return JSON.parse(cleaned);
+  } catch {
+    const match = cleaned.match(/(\{[\s\S]*\}|\[[\s\S]*\])/);
+    if (match) return JSON.parse(match[1]);
+    throw new Error('AI returned unparseable JSON');
+  }
+}
+
+// ── AIProviderFactory ─────────────────────────────────────────────────────────
+class AIProviderFactory {
+  async generateText(systemPrompt, userPrompt) {
+    const config = aiSettings.getActiveProvider('text');
+    if (!config) throw new Error('No active text AI provider configured');
+
+    if (config.provider === 'gemini') {
+      const { GoogleGenerativeAI } = require('@google/generative-ai');
+      const genAI = new GoogleGenerativeAI(config.apiKey);
+      const model = genAI.getGenerativeModel({
+        model: config.model,
+        systemInstruction: systemPrompt,
+        generationConfig: { responseMimeType: 'application/json' },
+      });
+      const result = await model.generateContent(userPrompt);
+      return result.response.text();
+    }
+
+    if (config.provider === 'openrouter') {
+      const resp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${config.apiKey}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': 'https://alibebeph.com',
+          'X-Title': 'Kwento Ko',
+        },
+        body: JSON.stringify({
+          model: config.model,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt },
+          ],
+        }),
+        signal: AbortSignal.timeout(60000),
+      });
+      const data = await resp.json();
+      return data.choices?.[0]?.message?.content || '';
+    }
+
+    if (config.provider === 'ollama') {
+      const host = config.extraConfig?.host || 'http://localhost:11434';
+      const resp = await fetch(`${host}/api/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: config.model,
+          prompt: `${systemPrompt}\n\n${userPrompt}`,
+          format: 'json',
+          stream: false,
+        }),
+        signal: AbortSignal.timeout(120000),
+      });
+      const data = await resp.json();
+      return data.response || '';
+    }
+
+    throw new Error(`Unsupported text provider: ${config.provider}`);
+  }
+
+  async generateImage(prompt) {
+    const config = aiSettings.getActiveProvider('image');
+    if (!config) throw new Error('No active image AI provider configured');
+
+    if (config.provider === 'gemini') {
+      const { GoogleGenerativeAI } = require('@google/generative-ai');
+      const genAI = new GoogleGenerativeAI(config.apiKey);
+      const model = genAI.getGenerativeModel({ model: config.model });
+      const result = await model.generateContent(prompt);
+      const part = result.response.candidates?.[0]?.content?.parts?.[0];
+      if (part?.inlineData?.data) return part.inlineData.data; // base64
+      throw new Error('Gemini Imagen returned no image data');
+    }
+
+    if (config.provider === 'fal') {
+      const { fal } = require('@fal-ai/client');
+      fal.config({ credentials: config.apiKey });
+      const result = await fal.run(config.model, {
+        input: { prompt, image_size: 'landscape_16_9', num_inference_steps: 28, guidance_scale: 3.5 },
+      });
+      const imgUrl = result.images?.[0]?.url;
+      if (!imgUrl) throw new Error('fal.ai returned no image URL');
+      const imgResp = await fetch(imgUrl);
+      const buf = await imgResp.arrayBuffer();
+      return Buffer.from(buf).toString('base64');
+    }
+
+    if (config.provider === 'replicate') {
+      const Replicate = require('replicate');
+      const replicate = new Replicate({ auth: config.apiKey });
+      const output = await replicate.run(config.model, { input: { prompt } });
+      const imgUrl = Array.isArray(output) ? output[0] : output;
+      const imgResp = await fetch(imgUrl);
+      const buf = await imgResp.arrayBuffer();
+      return Buffer.from(buf).toString('base64');
+    }
+
+    throw new Error(`Unsupported image provider: ${config.provider}`);
+  }
+
+  async generateLayout(storyData, format, template) {
+    const config = aiSettings.getActiveProvider('compile');
+    if (!config) throw new Error('No active compile AI provider configured');
+
+    const systemPrompt = `You are a children's book layout designer. Given story data, output a JSON layout plan for Puppeteer rendering. Output valid JSON only, no markdown fences.`;
+    const userPrompt = `Generate a layout plan for:
+Format: ${format}
+Template: ${template}
+Story title: ${storyData.title}
+Page count: ${storyData.pages?.length || 10}
+Has images: ${storyData.pages?.some(p => p.image) ? 'yes' : 'no'}
+
+Output this exact JSON shape:
+{
+  "coverPage": { "titleFontSize": 32, "titlePosition": "center", "imagePosition": "half", "backgroundColor": "#FFF8E1", "accentColor": "#FF6B6B" },
+  "storyPages": { "textPosition": "bottom", "imagePosition": "top", "textFontSize": 16, "translationFontSize": 13, "lineHeight": 1.6, "margins": { "top": "15mm", "bottom": "15mm", "inner": "20mm", "outer": "15mm" } },
+  "pageOrder": ["cover","dedication","print-instructions","story-pages","moral","discussion-guide","back-cover"]
+}`;
+
+    const raw = await this.generateText(systemPrompt, userPrompt);
+    return safeParseAIJson(raw);
+  }
+}
+
+const aiFactory = new AIProviderFactory();
+
+// ── Generation Rate Limiter ───────────────────────────────────────────────────
+const genRateLimit = rateLimit({ windowMs: 15 * 60 * 1000, max: 20, keyGenerator: req => req.ip });
+
+// ── Subscription Limit Check ──────────────────────────────────────────────────
+function checkStoryLimit(userId) {
+  const user = db.prepare('SELECT tier, is_tester, tester_limits FROM users WHERE id = ?').get(userId);
+  if (!user) return { allowed: false, reason: 'User not found' };
+
+  const tier = user.tier || 'free';
+  let limits;
+  try {
+    limits = user.is_tester && user.tester_limits ? JSON.parse(user.tester_limits) : null;
+  } catch {
+    limits = null;
+  }
+  limits = limits || TIER_LIMITS[tier] || TIER_LIMITS.free;
+
+  if (limits.storiesPerDay === -1) return { allowed: true, limits };
+
+  db.prepare('INSERT OR IGNORE INTO usage_counters (user_id) VALUES (?)').run(userId);
+
+  const today = new Date().toISOString().slice(0, 10);
+  const thisMonth = today.slice(0, 7);
+  const counters = db.prepare('SELECT * FROM usage_counters WHERE user_id = ?').get(userId);
+
+  if (counters.last_reset_day !== today) {
+    db.prepare('UPDATE usage_counters SET stories_today = 0, last_reset_day = ? WHERE user_id = ?').run(today, userId);
+    counters.stories_today = 0;
+  }
+  if (counters.last_reset_month !== thisMonth) {
+    db.prepare('UPDATE usage_counters SET stories_month = 0, images_month = 0, compiles_month = 0, last_reset_month = ? WHERE user_id = ?').run(thisMonth, userId);
+    counters.stories_month = 0;
+  }
+
+  if (counters.stories_today >= limits.storiesPerDay) {
+    return { allowed: false, reason: `Daily limit of ${limits.storiesPerDay} stories reached. Resets at midnight.` };
+  }
+  if (counters.stories_month >= limits.storiesPerMonth) {
+    return { allowed: false, reason: `Monthly limit of ${limits.storiesPerMonth} stories reached.` };
+  }
+  return { allowed: true, limits };
+}
+
+function incrementStoryCount(userId) {
+  db.prepare('UPDATE usage_counters SET stories_today = stories_today + 1, stories_month = stories_month + 1 WHERE user_id = ?').run(userId);
+}
+
+// ── Character Generation Prompts ──────────────────────────────────────────────
+function buildCharacterSystemPrompt() {
+  return `You are a Filipino children's book character creator. Create warm, culturally authentic characters.
+Rules:
+- Filipino language terms: use Nanay, Tatay, Lola, Lolo, Kuya, Ate — NOT Ina, Ama
+- NEVER rhyme unless asked
+- Output valid JSON only, no markdown fences`;
+}
+
+function buildCharacterUserPrompt({ name, type, customType, traits, distinctiveFeature, ageRange, language }) {
+  return `Create a character profile for a Filipino children's book.
+Name: ${name}
+Type: ${type}${customType ? ` (Custom: ${customType})` : ''}
+Personality traits: ${(traits || []).join(', ') || 'Mabait'}
+Distinctive feature: ${distinctiveFeature || 'none specified'}
+Age range of readers: ${ageRange || '4-6'}
+Story language: ${language || 'English'}
+
+Output this exact JSON:
+{
+  "name": "${name}",
+  "type": "${type}",
+  "personalityDescription": "2-3 sentences about personality",
+  "appearance": "2-3 sentences describing physical look",
+  "funFact": "one fun sentence about the character",
+  "catchphrase": "short memorable phrase in ${language || 'English'}",
+  "catchphraseEnglish": "English translation (null if language is English)",
+  "stats": { "bravery": 0-100, "curiosity": 0-100, "kindness": 0-100, "creativity": 0-100 },
+  "designPrompt": "Detailed AI art prompt for character design: whimsical digital illustration, soft rounded shapes, flat pastel color palette, subtle traditional watercolor texture, children's book illustration style, warm and friendly atmosphere"
+}`;
+}
+
+// ── Story Generation Prompts ──────────────────────────────────────────────────
+function buildStorySystemPrompt(language, ageRange) {
+  const maxWords = { '2-4': 8, '3-5': 12, '4-6': 16, '5-7': 18, '6-8': 20 }[ageRange] || 16;
+  const langRules = language === 'Filipino' || language === 'Tagalog'
+    ? 'Use conversational Filipino as spoken at home. Use Nanay, Tatay, Lola, Lolo — NOT Ina, Ama. Never use textbook Filipino.'
+    : language === 'Cebuano' ? 'Use natural Bisaya as spoken in Cebu/Visayas.'
+    : language === 'Ilocano' ? 'Use natural, simple, warm Ilocano rural tone.'
+    : language === 'Taglish' ? 'Use natural code-switching Taglish as Filipinos speak day-to-day.'
+    : 'Use natural, warm, engaging English children\'s prose.';
+
+  return `You are a Filipino children's book author. Write warm, engaging stories with cultural authenticity.
+Language rules: ${langRules}
+Sentence length: maximum ${maxWords} words per sentence.
+NEVER rhyme unless explicitly asked. Write natural narrative prose.
+Cultural authenticity: include naturally where appropriate — sinigang, adobo, bibingka, halo-halo, pan de sal, jeepney, tricycle, sari-sari store, bahay kubo, sampaguita.
+Output valid JSON only. No markdown fences.`;
+}
+
+function buildStoryUserPrompt({ character, tone, setting, settingFilipino, ageRange, pageCount, valuesCategory, specificLesson, causeEffectEnabled, language, isBilingual }) {
+  return `Write a ${pageCount || 10}-page Filipino children's story with these parameters:
+
+Character: ${JSON.stringify(character)}
+Tone: ${tone}
+Setting: ${settingFilipino || setting} (${setting})
+Age range: ${ageRange}
+Values: ${valuesCategory} — Lesson: ${specificLesson}
+Cause & Effect: ${causeEffectEnabled ? 'YES — one wrong-choice moment on pages 4-6, gentle consequence, character grows' : 'NO'}
+Language: ${language}
+Bilingual: ${isBilingual ? 'YES — add English translation per page' : 'NO'}
+
+Rules:
+- Character name "${character.name}" on every page
+- Personality traits reflected in actions
+- Catchphrase "${character.catchphrase}" appears at least once
+- Distinctive feature mentioned at least twice
+- Cause & effect page: ages 2-4 = extremely mild, ages 5-8 = slightly more tangible
+
+Output this exact JSON:
+{
+  "title": "Story title",
+  "titleEnglish": "English title (null if not bilingual)",
+  "backCoverSummary": "2-3 sentence teaser",
+  "moral": "Moral of the story in ${language}",
+  "moralEnglish": "English moral (null if not bilingual)",
+  "pages": [
+    {
+      "pageNumber": 1,
+      "text": "Story text in ${language}",
+      "textEnglish": "English translation (null if not bilingual)",
+      "causeEffect": null,
+      "illustrationIdea": "Brief scene for illustrator",
+      "imagePrompt": "Full AI art prompt: [character] [scene] whimsical digital illustration, soft rounded shapes, flat pastel color palette, subtle traditional watercolor texture, children's book illustration style, warm and friendly atmosphere"
+    }
+  ],
+  "characterBlueprintPrompt": "Full character reference prompt for consistent art generation"
+}
+Note: causeEffect is non-null ONLY on one page (pages 4-6): { "wrongChoice": "...", "consequence": "...", "resolution": "..." }`;
+}
+
+// ── Generation Routes ─────────────────────────────────────────────────────────
+app.post('/api/generate-character', authMiddleware, genRateLimit, async (req, res) => {
+  const { name, type, customType, traits, distinctiveFeature, age, ageRange, language } = req.body;
+  if (!name) return res.status(400).json({ error: 'Character name is required' });
+
+  try {
+    const raw = await aiFactory.generateText(
+      buildCharacterSystemPrompt(),
+      buildCharacterUserPrompt({ name, type, customType, traits, distinctiveFeature, age, ageRange, language })
+    );
+    const character = safeParseAIJson(raw);
+
+    db.prepare('INSERT INTO usage_log (user_id, action, provider, model) VALUES (?, ?, ?, ?)')
+      .run(req.userId, 'character_generate',
+        aiSettings.getActiveProvider('text')?.provider || 'unknown',
+        aiSettings.getActiveProvider('text')?.model || 'unknown');
+
+    res.json(character);
+  } catch (err) {
+    const isKeyError = /invalid.*api|authentication|unauthorized|quota|billing/i.test(err.message) || err.status === 401 || err.status === 403;
+    if (isKeyError) {
+      const config = aiSettings.getActiveProvider('text');
+      if (config) {
+        db.prepare('UPDATE ai_provider_settings SET last_test_ok = 0, last_test_msg = ? WHERE feature = ? AND provider = ?')
+          .run(err.message, 'text', config.provider);
+      }
+      return res.status(503).json({ error: 'Story generation is temporarily unavailable. Please try again in a few minutes.' });
+    }
+    console.error('generate-character error:', err);
+    res.status(500).json({ error: 'Character generation failed. Please try again.' });
+  }
+});
+
+app.post('/api/generate-story', authMiddleware, genRateLimit, async (req, res) => {
+  const { character, tone, setting, settingFilipino, ageRange, pageCount, valuesCategory, specificLesson, causeEffectEnabled, language, isBilingual } = req.body;
+  if (!character || !character.name) return res.status(400).json({ error: 'Character profile is required' });
+  if (!tone || !setting) return res.status(400).json({ error: 'Tone and setting are required' });
+
+  const check = checkStoryLimit(req.userId);
+  if (!check.allowed) return res.status(429).json({ error: check.reason });
+
+  try {
+    const raw = await aiFactory.generateText(
+      buildStorySystemPrompt(language || 'English', ageRange || '4-6'),
+      buildStoryUserPrompt({ character, tone, setting, settingFilipino, ageRange, pageCount, valuesCategory, specificLesson, causeEffectEnabled, language, isBilingual })
+    );
+    const story = safeParseAIJson(raw);
+    incrementStoryCount(req.userId);
+
+    db.prepare('INSERT INTO usage_log (user_id, action, provider, model) VALUES (?, ?, ?, ?)')
+      .run(req.userId, 'story_generate',
+        aiSettings.getActiveProvider('text')?.provider || 'unknown',
+        aiSettings.getActiveProvider('text')?.model || 'unknown');
+
+    res.json(story);
+  } catch (err) {
+    const isKeyError = /invalid.*api|authentication|unauthorized|quota|billing/i.test(err.message);
+    if (isKeyError) {
+      const config = aiSettings.getActiveProvider('text');
+      if (config) db.prepare('UPDATE ai_provider_settings SET last_test_ok = 0, last_test_msg = ? WHERE feature = ? AND provider = ?').run(err.message, 'text', config.provider);
+      return res.status(503).json({ error: 'Story generation is temporarily unavailable. Please try again in a few minutes.' });
+    }
+    console.error('generate-story error:', err);
+    res.status(500).json({ error: 'Story generation failed. Please try again.' });
+  }
+});
+
+app.post('/api/regenerate-page', authMiddleware, genRateLimit, async (req, res) => {
+  const { character, pageNumber, tone, language, isBilingual, storyContext } = req.body;
+  if (!character || !pageNumber) return res.status(400).json({ error: 'character and pageNumber required' });
+
+  const systemPrompt = buildStorySystemPrompt(language || 'English', '4-6');
+  const userPrompt = `Regenerate only page ${pageNumber} of a children's story.
+Character: ${JSON.stringify(character)}
+Story context (previous pages summary): ${storyContext || 'Beginning of story'}
+Tone: ${tone || 'Gentle'}
+Language: ${language || 'English'}
+Bilingual: ${isBilingual ? 'YES' : 'NO'}
+
+Output this exact JSON for ONE page only:
+{
+  "pageNumber": ${pageNumber},
+  "text": "Story text",
+  "textEnglish": null,
+  "causeEffect": null,
+  "illustrationIdea": "Brief scene",
+  "imagePrompt": "Full AI art prompt"
+}`;
+
+  try {
+    const raw = await aiFactory.generateText(systemPrompt, userPrompt);
+    res.json(safeParseAIJson(raw));
+  } catch (err) {
+    console.error('regenerate-page error:', err);
+    res.status(500).json({ error: 'Page regeneration failed. Please try again.' });
+  }
+});
+
 // Task 6:  OdooClient
 // Task 7:  Story generation routes
 // Task 8:  Image generation route
