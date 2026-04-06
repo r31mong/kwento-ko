@@ -63,6 +63,13 @@ describe('POST /api/auth/register', () => {
       .send({ email: 'no-pass@example.com' });
     expect(res.status).toBe(400);
   });
+
+  it('returns 400 if password is shorter than 6 characters', async () => {
+    const res = await request(app)
+      .post('/api/auth/register')
+      .send({ email: 'short@example.com', password: '123' });
+    expect(res.status).toBe(400);
+  });
 });
 
 describe('POST /api/auth/login', () => {
@@ -84,6 +91,20 @@ describe('POST /api/auth/login', () => {
     const res = await request(app)
       .post('/api/auth/login')
       .send({ email: 'login@example.com', password: 'wrongpass' });
+    expect(res.status).toBe(401);
+  });
+
+  it('returns 400 if email or password missing', async () => {
+    const res = await request(app)
+      .post('/api/auth/login')
+      .send({ email: 'login@example.com' });
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 401 for non-existent email', async () => {
+    const res = await request(app)
+      .post('/api/auth/login')
+      .send({ email: 'nobody@example.com', password: 'somepass' });
     expect(res.status).toBe(401);
   });
 });
@@ -121,5 +142,14 @@ describe('POST /api/admin/login', () => {
       .send({ email: 'admin@test.com', password: 'testpass' });
     expect(res.status).toBe(200);
     expect(res.body.token).toBeTruthy();
+  });
+});
+
+describe('POST /api/admin/login — wrong credentials', () => {
+  it('returns 401 with wrong password', async () => {
+    const res = await request(app)
+      .post('/api/admin/login')
+      .send({ email: 'admin@test.com', password: 'wrongpass' });
+    expect(res.status).toBe(401);
   });
 });

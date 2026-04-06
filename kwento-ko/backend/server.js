@@ -351,10 +351,11 @@ app.post('/api/auth/login', async (req, res) => {
 
   const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
   if (!user) return res.status(401).json({ error: 'Invalid email or password' });
-  if (user.is_suspended) return res.status(403).json({ error: 'Account suspended' });
 
   const valid = await bcrypt.compare(password, user.password_hash);
   if (!valid) return res.status(401).json({ error: 'Invalid email or password' });
+
+  if (user.is_suspended) return res.status(403).json({ error: 'Account suspended' });
 
   db.prepare('UPDATE users SET last_active_at = CURRENT_TIMESTAMP WHERE id = ?').run(user.id);
   const token = makeToken(user.id);
@@ -394,9 +395,15 @@ app.get('/api/auth/me', authMiddleware, (req, res) => {
 
   const fresh = db.prepare('SELECT * FROM usage_counters WHERE user_id = ?').get(req.userId);
   const tier = user.tier || 'free';
-  const limits = user.is_tester && user.tester_limits
-    ? JSON.parse(user.tester_limits)
-    : TIER_LIMITS[tier] || TIER_LIMITS.free;
+  let limits;
+  try {
+    limits = user.is_tester && user.tester_limits
+      ? JSON.parse(user.tester_limits)
+      : null;
+  } catch {
+    limits = null;
+  }
+  limits = limits || TIER_LIMITS[tier] || TIER_LIMITS.free;
 
   res.json({
     user: {
