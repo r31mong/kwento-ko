@@ -544,6 +544,19 @@
 
 <script>
 // ═══════════════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════════════
+function escapeHtml(str) {
+  if (str == null) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+// ═══════════════════════════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════════════════════════
 const state = {
@@ -872,23 +885,23 @@ function renderCharacterProfile(char) {
   const el = document.getElementById('character-profile-result');
   el.innerHTML = `
     <div id="character-preview" style="margin-bottom:16px;">
-      <h3 style="font-family:'Baloo 2',sans-serif;color:var(--deep-blue);font-size:24px;">${char.name}</h3>
-      <p style="font-size:13px;color:#999;font-family:'Quicksand',sans-serif;margin-bottom:12px;">${char.type}</p>
-      <p style="margin-bottom:12px;">${char.personalityDescription}</p>
-      <p style="margin-bottom:12px;color:#666;">${char.appearance}</p>
-      <div class="catchphrase-bubble">"${char.catchphrase}"${char.catchphraseEnglish ? ` <em style="font-size:13px;opacity:0.7;">(${char.catchphraseEnglish})</em>` : ''}</div>
-      <p style="font-size:13px;color:#666;margin-bottom:12px;">🌟 Fun Fact: ${char.funFact}</p>
+      <h3 style="font-family:'Baloo 2',sans-serif;color:var(--deep-blue);font-size:24px;">${escapeHtml(char.name)}</h3>
+      <p style="font-size:13px;color:#999;font-family:'Quicksand',sans-serif;margin-bottom:12px;">${escapeHtml(char.type)}</p>
+      <p style="margin-bottom:12px;">${escapeHtml(char.personalityDescription)}</p>
+      <p style="margin-bottom:12px;color:#666;">${escapeHtml(char.appearance)}</p>
+      <div class="catchphrase-bubble">"${escapeHtml(char.catchphrase)}"${char.catchphraseEnglish ? ` <em style="font-size:13px;opacity:0.7;">(${escapeHtml(char.catchphraseEnglish)})</em>` : ''}</div>
+      <p style="font-size:13px;color:#666;margin-bottom:12px;">🌟 Fun Fact: ${escapeHtml(char.funFact)}</p>
       ${char.stats ? `
         <div>
           ${Object.entries(char.stats).map(([k, v]) => `
             <div class="stat-bar-wrap">
-              <div class="stat-label"><span>${k}</span><span>${v}%</span></div>
-              <div class="stat-bar"><div class="stat-bar-fill" style="width:${v}%"></div></div>
+              <div class="stat-label"><span>${escapeHtml(k)}</span><span>${escapeHtml(v)}%</span></div>
+              <div class="stat-bar"><div class="stat-bar-fill" style="width:${escapeHtml(v)}%"></div></div>
             </div>`).join('')}
         </div>` : ''}
       <div style="margin-top:16px;">
         <label class="field-label" style="margin-top:0;">🎨 Character Design Prompt</label>
-        <div class="prompt-card"><p class="prompt-text">${char.designPrompt}</p></div>
+        <div class="prompt-card"><p class="prompt-text">${escapeHtml(char.designPrompt)}</p></div>
         <button class="copy-btn" onclick="navigator.clipboard.writeText(this.closest('.prompt-card').previousElementSibling.querySelector('.prompt-text').textContent).then(()=>this.textContent='✅ Copied!')">📋 Copy Prompt</button>
       </div>
     </div>
@@ -951,17 +964,17 @@ function renderBook() {
     <span class="badge badge-coral">${getSelected('age-pills') || '4-6'}</span>`;
 
   document.getElementById('back-cover-summary').innerHTML = `
-    <p style="font-family:'Baloo 2',sans-serif;color:var(--deep-blue);font-size:18px;margin-bottom:8px;">📖 ${story.title}</p>
-    <p style="color:#666;">${story.backCoverSummary || ''}</p>`;
+    <p style="font-family:'Baloo 2',sans-serif;color:var(--deep-blue);font-size:18px;margin-bottom:8px;">📖 ${escapeHtml(story.title)}</p>
+    <p style="color:#666;">${escapeHtml(story.backCoverSummary || '')}</p>`;
 
   const pagesEl = document.getElementById('story-pages-container');
   pagesEl.innerHTML = (story.pages || []).map(p => `
     <div class="story-page-card" id="page-card-${p.pageNumber}">
       <div class="page-number-badge">${p.pageNumber}</div>
-      <p class="story-text">${p.text}</p>
-      ${p.textEnglish ? `<p class="translation-text">${p.textEnglish}</p>` : ''}
-      ${p.causeEffect ? `<div class="cause-effect-box">⚡ <strong>Cause &amp; Effect:</strong> ${p.causeEffect.wrongChoice} → ${p.causeEffect.consequence} → ${p.causeEffect.resolution}</div>` : ''}
-      ${p.illustrationIdea ? `<div class="illus-idea">🖼️ <em>${p.illustrationIdea}</em></div>` : ''}
+      <p class="story-text">${escapeHtml(p.text)}</p>
+      ${p.textEnglish ? `<p class="translation-text">${escapeHtml(p.textEnglish)}</p>` : ''}
+      ${p.causeEffect ? `<div class="cause-effect-box">⚡ <strong>Cause &amp; Effect:</strong> ${escapeHtml(p.causeEffect.wrongChoice)} → ${escapeHtml(p.causeEffect.consequence)} → ${escapeHtml(p.causeEffect.resolution)}</div>` : ''}
+      ${p.illustrationIdea ? `<div class="illus-idea">🖼️ <em>${escapeHtml(p.illustrationIdea)}</em></div>` : ''}
       <div class="page-actions">
         <button class="btn-ghost" style="font-size:13px;padding:6px 14px;" onclick="regeneratePage(${p.pageNumber})">🔄 Regenerate</button>
       </div>
@@ -971,8 +984,8 @@ function renderBook() {
     const moralEl = document.getElementById('moral-banner');
     moralEl.style.display = 'block';
     moralEl.innerHTML = `<h3 style="font-family:'Baloo 2',sans-serif;font-size:20px;margin-bottom:8px;">The Moral of the Story</h3>
-      <p style="font-size:17px;">${story.moral}</p>
-      ${story.moralEnglish ? `<p style="opacity:0.85;font-size:14px;margin-top:6px;">${story.moralEnglish}</p>` : ''}`;
+      <p style="font-size:17px;">${escapeHtml(story.moral)}</p>
+      ${story.moralEnglish ? `<p style="opacity:0.85;font-size:14px;margin-top:6px;">${escapeHtml(story.moralEnglish)}</p>` : ''}`;
   }
 
   const compileEl = document.getElementById('compile-cta');
@@ -999,7 +1012,7 @@ function renderPrompts() {
   if (story.characterBlueprintPrompt) {
     html += `<div class="prompt-card" style="border-color:var(--sun-yellow);">
       <strong style="font-family:'Quicksand',sans-serif;">🎨 Character Blueprint (use for all pages)</strong>
-      <p class="prompt-text" style="margin-top:8px;">${formatPrompt(story.characterBlueprintPrompt)}</p>
+      <p class="prompt-text" style="margin-top:8px;">${escapeHtml(formatPrompt(story.characterBlueprintPrompt))}</p>
       <div class="prompt-actions">
         <button class="copy-btn" onclick="navigator.clipboard.writeText(this.closest('.prompt-card').querySelector('.prompt-text').textContent).then(()=>this.textContent='✅ Copied!')">📋 Copy</button>
       </div>
@@ -1010,7 +1023,7 @@ function renderPrompts() {
     const canGenerate = state.subscription?.imagesPerMonth !== 0;
     html += `<div class="prompt-card">
       <strong style="font-family:'Quicksand',sans-serif;font-size:13px;">Page ${p.pageNumber}</strong>
-      <p class="prompt-text" style="margin-top:6px;">${formatPrompt(p.imagePrompt || '')}</p>
+      <p class="prompt-text" style="margin-top:6px;">${escapeHtml(formatPrompt(p.imagePrompt || ''))}</p>
       <div class="prompt-actions">
         <button class="copy-btn" onclick="navigator.clipboard.writeText(this.closest('.prompt-card').querySelector('.prompt-text').textContent).then(()=>this.textContent='✅ Copied!')">📋 Copy</button>
         ${canGenerate ? `<button class="btn-ghost" style="font-size:13px;padding:6px 14px;" onclick="generatePageImage(${p.pageNumber}, this.closest('.prompt-card').querySelector('.prompt-text').textContent)">✨ Generate Image</button>` : ''}
@@ -1030,15 +1043,15 @@ function renderCharacterCard() {
   const char = state.character;
   if (!char) return;
   document.getElementById('character-card-print').innerHTML = `
-    <h2 style="font-family:'Baloo 2',sans-serif;color:var(--deep-blue);text-align:center;">${char.name}</h2>
-    <p style="text-align:center;color:#999;font-family:'Quicksand',sans-serif;margin-bottom:12px;">${char.type}</p>
-    <div class="catchphrase-bubble" style="text-align:center;">"${char.catchphrase}"</div>
-    <p style="margin:12px 0;">${char.personalityDescription}</p>
-    <p style="color:#666;font-size:14px;">👁️ ${char.appearance}</p>
-    <p style="color:#666;font-size:14px;margin-top:8px;">🌟 ${char.funFact}</p>
+    <h2 style="font-family:'Baloo 2',sans-serif;color:var(--deep-blue);text-align:center;">${escapeHtml(char.name)}</h2>
+    <p style="text-align:center;color:#999;font-family:'Quicksand',sans-serif;margin-bottom:12px;">${escapeHtml(char.type)}</p>
+    <div class="catchphrase-bubble" style="text-align:center;">"${escapeHtml(char.catchphrase)}"</div>
+    <p style="margin:12px 0;">${escapeHtml(char.personalityDescription)}</p>
+    <p style="color:#666;font-size:14px;">👁️ ${escapeHtml(char.appearance)}</p>
+    <p style="color:#666;font-size:14px;margin-top:8px;">🌟 ${escapeHtml(char.funFact)}</p>
     ${char.stats ? `<div style="margin-top:12px;">${Object.entries(char.stats).map(([k,v]) => `
-      <div class="stat-bar-wrap"><div class="stat-label"><span>${k}</span><span>${v}%</span></div>
-      <div class="stat-bar"><div class="stat-bar-fill" style="width:${v}%"></div></div></div>`).join('')}</div>` : ''}`;
+      <div class="stat-bar-wrap"><div class="stat-label"><span>${escapeHtml(k)}</span><span>${escapeHtml(v)}%</span></div>
+      <div class="stat-bar"><div class="stat-bar-fill" style="width:${escapeHtml(v)}%"></div></div></div>`).join('')}</div>` : ''}`;
 }
 
 function renderDiscussionGuide() {
@@ -1123,7 +1136,11 @@ async function generatePageImage(pageNum, prompt) {
       storyId: state.savedStoryId,
       pageIndex: pageNum,
     });
-    resultEl.innerHTML = `<img src="${data.imageUrl}" style="max-width:100%;border-radius:12px;margin-top:8px;" />`;
+    const img = document.createElement('img');
+    img.style.cssText = 'max-width:100%;border-radius:12px;margin-top:8px;';
+    img.src = data.imageUrl;
+    resultEl.innerHTML = '';
+    resultEl.appendChild(img);
   } catch (err) {
     resultEl.innerHTML = `<span style="color:#e53e3e;font-size:13px;">${err.message}</span>`;
   }
@@ -1273,10 +1290,10 @@ async function loadLibrary() {
       <div class="library-card">
         <span class="story-emoji">📖</span>
         <div style="flex:1;">
-          <h4>${s.title}</h4>
+          <h4>${escapeHtml(s.title)}</h4>
           <div class="meta">
-            <span class="badge badge-blue">${s.language}</span>
-            ${s.character_name ? `<span class="badge badge-green">${s.character_name}</span>` : ''}
+            <span class="badge badge-blue">${escapeHtml(s.language)}</span>
+            ${s.character_name ? `<span class="badge badge-green">${escapeHtml(s.character_name)}</span>` : ''}
             <span>${new Date(s.created_at).toLocaleDateString('en-PH')}</span>
           </div>
         </div>
@@ -1537,7 +1554,7 @@ async function loadAdminSettings() {
       <option value="true" ${data.maintenance_mode==='true'?'selected':''}>On</option>
     </select>
     <label class="field-label">Maintenance Message</label>
-    <input type="text" id="s-msg" value="${data.maintenance_message||''}" style="margin-bottom:12px;" />
+    <input type="text" id="s-msg" value="${escapeHtml(data.maintenance_message||'')}" style="margin-bottom:12px;" />
     <label class="field-label">Lifetime Plan Available</label>
     <select id="s-lifetime" style="margin-bottom:12px;">
       <option value="true" ${data.lifetime_plan_active!=='false'?'selected':''}>Yes</option>
