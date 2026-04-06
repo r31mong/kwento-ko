@@ -1434,9 +1434,10 @@ async function loadAdminAISettings() {
             ${p.last_test_ok === true ? '✅' : p.last_test_ok === false ? '❌' : '⚪'}
             ${escapeHtml(p.last_test_msg || 'Never tested')}
           </p>
-          <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
+          <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center;">
             <button class="copy-btn" onclick="testAIProvider('${escapeHtml(feature)}','${escapeHtml(p.provider)}')">▶ Test</button>
             <button class="copy-btn" onclick="promptUpdateKey('${escapeHtml(feature)}','${escapeHtml(p.provider)}')">✏️ Update Key</button>
+            <button class="copy-btn" onclick="promptUpdateModel('${escapeHtml(feature)}','${escapeHtml(p.provider)}','${escapeHtml(p.model)}')">🤖 Change Model</button>
           </div>
         </div>`).join('')}
     </div>`;
@@ -1465,6 +1466,38 @@ async function promptUpdateKey(feature, provider) {
   if (!key) return;
   const data = await adminApi('PUT', `/api/admin/ai-settings/${feature}/${provider}`, { apiKey: key });
   alert(`${data.ok ? '✅ Key updated.' : '❌ Failed.'} Test: ${data.testResult?.message}`);
+  loadAdminAISettings();
+}
+
+async function promptUpdateModel(feature, provider, currentModel) {
+  const GEMINI_MODELS = [
+    'gemini-2.0-flash',
+    'gemini-2.0-flash-lite',
+    'gemini-2.5-flash-preview-04-17',
+    'gemini-2.5-pro-preview-03-25',
+    'gemini-1.5-flash',
+    'gemini-1.5-flash-8b',
+    'gemini-1.5-pro',
+  ];
+
+  let model;
+  if (provider === 'gemini') {
+    const options = GEMINI_MODELS.map((m, i) => `${i + 1}. ${m}${m === currentModel ? ' (current)' : ''}`).join('\n');
+    const input = prompt(`Select Gemini model for ${feature}:\n\n${options}\n\nEnter number or type a model name:`);
+    if (!input) return;
+    const idx = parseInt(input, 10);
+    model = (!isNaN(idx) && idx >= 1 && idx <= GEMINI_MODELS.length)
+      ? GEMINI_MODELS[idx - 1]
+      : input.trim();
+  } else {
+    model = prompt(`Enter model name for ${provider} (${feature}):\nCurrent: ${currentModel}`);
+    if (!model) return;
+    model = model.trim();
+  }
+
+  if (!model) return;
+  const data = await adminApi('PUT', `/api/admin/ai-settings/${feature}/${provider}`, { model });
+  alert(data.ok ? `✅ Model updated to: ${model}` : `❌ Failed: ${data.error}`);
   loadAdminAISettings();
 }
 
