@@ -485,7 +485,7 @@ class AISettingsManager {
     }
     if (model) updates.model = model;
     if (extraConfig !== undefined) updates.extra_config = JSON.stringify(extraConfig);
-    updates.updated_at = new Date().toISOString();
+    updates.updated_at = new Date().toISOString().replace('T', ' ').slice(0, 19);
     updates.updated_by = adminEmail;
 
     const sets = Object.keys(updates).map(k => `${k} = ?`).join(', ');
@@ -505,12 +505,14 @@ class AISettingsManager {
     const target = db.prepare('SELECT id FROM ai_provider_settings WHERE feature = ? AND provider = ?').get(feature, provider);
     if (!target) return { ok: false, error: 'Provider not found' };
 
-    db.prepare('UPDATE ai_provider_settings SET is_active = 0 WHERE feature = ?').run(feature);
-    db.prepare('UPDATE ai_provider_settings SET is_active = 1 WHERE feature = ? AND provider = ?').run(feature, provider);
-    db.prepare(`
-      INSERT INTO ai_key_audit_log (feature, provider, action, result, admin_email, ip_address)
-      VALUES (?, ?, 'provider_switched', 'success', ?, ?)
-    `).run(feature, provider, adminEmail, ipAddress);
+    db.transaction(() => {
+      db.prepare('UPDATE ai_provider_settings SET is_active = 0 WHERE feature = ?').run(feature);
+      db.prepare('UPDATE ai_provider_settings SET is_active = 1 WHERE feature = ? AND provider = ?').run(feature, provider);
+      db.prepare(`
+        INSERT INTO ai_key_audit_log (feature, provider, action, result, admin_email, ip_address)
+        VALUES (?, ?, 'provider_switched', 'success', ?, ?)
+      `).run(feature, provider, adminEmail, ipAddress);
+    })();
 
     this.refreshCache();
     return { ok: true };
@@ -518,9 +520,11 @@ class AISettingsManager {
 
   async testConnection(feature, provider, apiKey, model, extraConfig = {}) {
     const start = Date.now();
-    const key = apiKey === '__USE_STORED__'
-      ? (() => { const row = db.prepare('SELECT api_key_enc FROM ai_provider_settings WHERE feature = ? AND provider = ?').get(feature, provider); return row ? decryptKey(row.api_key_enc) : null; })()
-      : apiKey;
+    let key = apiKey;
+    if (apiKey === '__USE_STORED__') {
+      const row = db.prepare('SELECT api_key_enc FROM ai_provider_settings WHERE feature = ? AND provider = ?').get(feature, provider);
+      key = row ? decryptKey(row.api_key_enc) : null;
+    }
 
     try {
       if (provider === 'gemini') {
