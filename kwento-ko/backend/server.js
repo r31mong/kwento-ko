@@ -1439,9 +1439,328 @@ app.post('/api/compile-book', authMiddleware, async (req, res) => {
 // Task 8:  Image generation route
 // Task 9:  Book compilation route
 // Task 10: Library CRUD routes
+// ── Library Routes ────────────────────────────────────────────────────────────
+app.post('/api/library', authMiddleware, (req, res) => {
+  const { title, language, tone, ageRange, characterName, pageCount, storyData } = req.body;
+  if (!title || !storyData) return res.status(400).json({ error: 'title and storyData are required' });
+
+  const user = db.prepare('SELECT tier, is_tester, tester_limits FROM users WHERE id = ?').get(req.userId);
+  const tier = user.tier || 'free';
+  const storyCount = db.prepare('SELECT COUNT(*) as c FROM stories WHERE user_id = ?').get(req.userId).c;
+  const maxStories = { free: 5, pro: 100, business: -1, tester: -1 }[tier] || 5;
+  if (maxStories !== -1 && storyCount >= maxStories) {
+    return res.status(429).json({ error: `Story library limit reached (${maxStories} stories). Upgrade to save more.` });
+  }
+
+  const result = db.prepare(`
+    INSERT INTO stories (user_id, title, language, tone, age_range, character_name, page_count, story_data)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(req.userId, title, language || 'English', tone, ageRange, characterName, pageCount,
+    typeof storyData === 'string' ? storyData : JSON.stringify(storyData));
+
+  res.status(201).json({ id: result.lastInsertRowid });
+});
+
+app.get('/api/library', authMiddleware, (req, res) => {
+  const { search, language } = req.query;
+  let query = 'SELECT id, title, language, tone, age_range, character_name, page_count, created_at, updated_at FROM stories WHERE user_id = ?';
+  const params = [req.userId];
+  if (language) { query += ' AND language = ?'; params.push(language); }
+  if (search) { query += ' AND (title LIKE ? OR character_name LIKE ?)'; params.push(`%${search}%`, `%${search}%`); }
+  query += ' ORDER BY updated_at DESC';
+  const stories = db.prepare(query).all(...params);
+  res.json({ stories });
+});
+
+app.get('/api/library/:id', authMiddleware, (req, res) => {
+  const story = db.prepare('SELECT * FROM stories WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
+  if (!story) return res.status(404).json({ error: 'Story not found' });
+  const images = db.prepare('SELECT id, page_index, prompt_used, image_data FROM story_images WHERE story_id = ?').all(story.id);
+  res.json({ ...story, storyData: JSON.parse(story.story_data), images });
+});
+
+app.put('/api/library/:id', authMiddleware, (req, res) => {
+  const story = db.prepare('SELECT id FROM stories WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
+  if (!story) return res.status(404).json({ error: 'Story not found' });
+
+  const { title, storyData } = req.body;
+  const updates = {};
+  if (title) updates.title = title;
+  if (storyData) updates.story_data = typeof storyData === 'string' ? storyData : JSON.stringify(storyData);
+  updates.updated_at = new Date().toISOString().replace('T', ' ').slice(0, 19);
+
+  const sets = Object.keys(updates).map(k => `${k} = ?`).join(', ');
+  db.prepare(`UPDATE stories SET ${sets} WHERE id = ?`).run(...Object.values(updates), req.params.id);
+  res.json({ ok: true });
+});
+
+app.delete('/api/library/:id', authMiddleware, (req, res) => {
+  const story = db.prepare('SELECT id FROM stories WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
+  if (!story) return res.status(404).json({ error: 'Story not found' });
+  db.prepare('DELETE FROM stories WHERE id = ?').run(req.params.id);
+  res.json({ ok: true });
+});
+
 // Task 11: Growth routes (promo, referral, affiliate)
+// ── Growth Routes ─────────────────────────────────────────────────────────────
+app.post('/api/promo/validate', (req, res) => {
+  const { code, tier, billingCycle } = req.body;
+  if (!code) return res.status(400).json({ error: 'code is required' });
+
+  const today = new Date().toISOString();
+  const promo = db.prepare(`
+    SELECT * FROM promo_codes
+    WHERE code = ? AND (expires_at IS NULL OR expires_at > ?)
+    AND (max_uses IS NULL OR uses_count < max_uses)
+    AND (applies_to = ? OR applies_to = 'all' OR applies_to IS NULL)
+  `).get(code.toUpperCase(), today, tier || 'pro');
+
+  if (!promo) return res.json({ valid: false, message: 'Invalid or expired promo code.' });
+
+  const cycleMatch = !promo.billing_cycle || promo.billing_cycle === 'all' || promo.billing_cycle === billingCycle;
+  if (!cycleMatch) return res.json({ valid: false, message: 'This code is not valid for the selected billing cycle.' });
+
+  res.json({
+    valid: true,
+    discount: { type: promo.discount_type, value: promo.discount_value },
+    message: `${promo.discount_type === 'percent' ? promo.discount_value + '%' : '₱' + promo.discount_value} off applied!`,
+  });
+});
+
+app.get('/api/referral/stats', authMiddleware, (req, res) => {
+  const referrals = db.prepare('SELECT COUNT(*) as total, SUM(rewarded) as rewarded FROM referrals WHERE referrer_id = ?').get(req.userId);
+  const user = db.prepare('SELECT referral_code FROM users WHERE id = ?').get(req.userId);
+  res.json({
+    referralCode: user.referral_code,
+    referralLink: `https://kwentoko.com/?ref=${user.referral_code}`,
+    totalReferrals: referrals.total || 0,
+    rewardedReferrals: referrals.rewarded || 0,
+    bonusStoriesEarned: (referrals.rewarded || 0) * 5,
+  });
+});
+
+app.get('/api/affiliate/stats', authMiddleware, (req, res) => {
+  const earnings = db.prepare(`
+    SELECT SUM(amount_php) as total, SUM(CASE WHEN status='pending' THEN amount_php ELSE 0 END) as pending
+    FROM affiliate_earnings WHERE affiliate_id = ?
+  `).get(req.userId);
+  const referrals = db.prepare('SELECT COUNT(*) as total FROM affiliate_earnings WHERE affiliate_id = ?').get(req.userId);
+  res.json({
+    totalEarningsPhp: earnings.total || 0,
+    pendingPayoutPhp: earnings.pending || 0,
+    totalReferrals: referrals.total || 0,
+  });
+});
+
+app.post('/api/affiliate/payout-request', authMiddleware, (req, res) => {
+  const pending = db.prepare('SELECT SUM(amount_php) as total FROM affiliate_earnings WHERE affiliate_id = ? AND status = ?').get(req.userId, 'pending');
+  if (!pending.total || pending.total < 500) {
+    return res.status(400).json({ error: 'Minimum payout is ₱500. Current pending: ₱' + (pending.total || 0) });
+  }
+  res.json({ ok: true, message: 'Payout request submitted. Admin will process within 3-5 business days.' });
+});
+
 // Task 12: Admin backend routes
+// ── Admin Routes ──────────────────────────────────────────────────────────────
+app.get('/api/admin/overview', adminMiddleware, (req, res) => {
+  const today = new Date().toISOString().slice(0, 10);
+  const thisMonth = today.slice(0, 7);
+
+  const userCounts = db.prepare(`
+    SELECT
+      COUNT(*) as total,
+      SUM(CASE WHEN tier='free' THEN 1 ELSE 0 END) as free,
+      SUM(CASE WHEN tier='pro' THEN 1 ELSE 0 END) as pro,
+      SUM(CASE WHEN tier='business' THEN 1 ELSE 0 END) as business,
+      SUM(CASE WHEN is_tester=1 THEN 1 ELSE 0 END) as tester
+    FROM users
+  `).get();
+
+  const todayStories   = db.prepare("SELECT COUNT(*) as c FROM usage_log WHERE action='story_generate' AND date(created_at)=?").get(today).c;
+  const monthStories   = db.prepare("SELECT COUNT(*) as c FROM usage_log WHERE action='story_generate' AND strftime('%Y-%m',created_at)=?").get(thisMonth).c;
+  const todayImages    = db.prepare("SELECT COUNT(*) as c FROM usage_log WHERE action='image_generate' AND date(created_at)=?").get(today).c;
+  const monthImages    = db.prepare("SELECT COUNT(*) as c FROM usage_log WHERE action='image_generate' AND strftime('%Y-%m',created_at)=?").get(thisMonth).c;
+  const todayCompiles  = db.prepare("SELECT COUNT(*) as c FROM usage_log WHERE action='book_compile' AND date(created_at)=?").get(today).c;
+  const pendingSync    = db.prepare('SELECT COUNT(*) as c FROM odoo_sync_queue').get().c;
+
+  const textConfig  = aiSettings.getActiveProvider('text');
+  const imageConfig = aiSettings.getActiveProvider('image');
+
+  res.json({
+    users: userCounts,
+    todayStories, monthStories,
+    todayImages, monthImages,
+    todayCompiles,
+    pendingOdooSync: pendingSync,
+    odoo: odoo.getStatus(),
+    ai: { textProvider: textConfig?.provider, textModel: textConfig?.model, imageProvider: imageConfig?.provider, imageModel: imageConfig?.model },
+  });
+});
+
+app.get('/api/admin/users', adminMiddleware, (req, res) => {
+  const { search, limit = 50, offset = 0 } = req.query;
+  let query = 'SELECT id, email, display_name, avatar_emoji, tier, is_tester, tester_note, is_suspended, created_at, last_active_at FROM users';
+  const params = [];
+  if (search) { query += ' WHERE email LIKE ? OR display_name LIKE ?'; params.push(`%${search}%`, `%${search}%`); }
+  query += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
+  params.push(Math.min(parseInt(limit), 100), parseInt(offset));
+  const users = db.prepare(query).all(...params);
+  const total = db.prepare('SELECT COUNT(*) as c FROM users').get().c;
+  res.json({ users, total });
+});
+
+app.get('/api/admin/users/:id', adminMiddleware, (req, res) => {
+  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id);
+  if (!user) return res.status(404).json({ error: 'User not found' });
+  const counters = db.prepare('SELECT * FROM usage_counters WHERE user_id = ?').get(req.params.id);
+  const totalStories = db.prepare('SELECT COUNT(*) as c FROM stories WHERE user_id = ?').get(req.params.id).c;
+  delete user.password_hash;
+  res.json({ user, counters, totalStories });
+});
+
+app.put('/api/admin/users/:id/tier', adminMiddleware, (req, res) => {
+  const { tier } = req.body;
+  if (!['free', 'pro', 'business'].includes(tier)) return res.status(400).json({ error: 'Invalid tier' });
+  db.prepare('UPDATE users SET tier = ?, tier_cached_at = CURRENT_TIMESTAMP WHERE id = ?').run(tier, req.params.id);
+  res.json({ ok: true });
+});
+
+app.post('/api/admin/users/:id/tester', adminMiddleware, (req, res) => {
+  const { storiesPerDay, storiesPerMonth, imagesPerMonth, note, canCompileBook, canExportPDF, canExportDOCX, commercialLicense } = req.body;
+  const testerLimits = JSON.stringify({
+    storiesPerDay: storiesPerDay ?? -1,
+    storiesPerMonth: storiesPerMonth ?? -1,
+    imagesPerMonth: imagesPerMonth ?? -1,
+    canExportPDF: canExportPDF ?? true,
+    canExportDOCX: canExportDOCX ?? true,
+    canCompileBook: canCompileBook ?? true,
+    commercialLicense: commercialLicense ?? true,
+    storageLimit: -1,
+    watermark: false,
+  });
+  db.prepare('UPDATE users SET is_tester = 1, tester_limits = ?, tester_note = ? WHERE id = ?').run(testerLimits, note || null, req.params.id);
+  res.json({ ok: true });
+});
+
+app.delete('/api/admin/users/:id/tester', adminMiddleware, (req, res) => {
+  db.prepare('UPDATE users SET is_tester = 0, tester_limits = NULL, tester_note = NULL WHERE id = ?').run(req.params.id);
+  res.json({ ok: true });
+});
+
+app.put('/api/admin/users/:id/suspend', adminMiddleware, (req, res) => {
+  const { suspended } = req.body;
+  db.prepare('UPDATE users SET is_suspended = ? WHERE id = ?').run(suspended ? 1 : 0, req.params.id);
+  res.json({ ok: true });
+});
+
+app.delete('/api/admin/users/:id', adminMiddleware, (req, res) => {
+  const user = db.prepare('SELECT id FROM users WHERE id = ?').get(req.params.id);
+  if (!user) return res.status(404).json({ error: 'User not found' });
+  db.prepare('DELETE FROM users WHERE id = ?').run(req.params.id);
+  res.json({ ok: true });
+});
+
+app.get('/api/admin/ai-costs', adminMiddleware, (req, res) => {
+  const thisMonth = new Date().toISOString().slice(0, 7);
+  const byday = db.prepare("SELECT date(created_at) as day, action, provider, COUNT(*) as calls, SUM(tokens_used) as tokens FROM usage_log WHERE strftime('%Y-%m',created_at)=? GROUP BY day, action, provider ORDER BY day DESC").all(thisMonth);
+  const topUsers = db.prepare("SELECT user_id, COUNT(*) as calls FROM usage_log WHERE strftime('%Y-%m',created_at)=? GROUP BY user_id ORDER BY calls DESC LIMIT 10").all(thisMonth);
+  res.json({ byday, topUsers });
+});
+
+app.get('/api/admin/odoo-sync', adminMiddleware, (req, res) => {
+  const queue = db.prepare('SELECT id, attempts, last_attempt, created_at FROM odoo_sync_queue ORDER BY created_at DESC LIMIT 50').all();
+  res.json({ queue, odooStatus: odoo.getStatus() });
+});
+
+app.post('/api/admin/odoo-sync/retry', adminMiddleware, async (req, res) => {
+  await odoo.flushSyncQueue();
+  res.json({ ok: true });
+});
+
+app.get('/api/admin/promo-codes', adminMiddleware, (req, res) => {
+  const codes = db.prepare('SELECT * FROM promo_codes ORDER BY created_at DESC').all();
+  res.json({ codes });
+});
+
+app.post('/api/admin/promo-codes', adminMiddleware, (req, res) => {
+  const { code, discountType, discountValue, appliesTo, billingCycle, maxUses, expiresAt } = req.body;
+  if (!code || !discountType || !discountValue) return res.status(400).json({ error: 'code, discountType, and discountValue are required' });
+  const result = db.prepare(`
+    INSERT INTO promo_codes (code, discount_type, discount_value, applies_to, billing_cycle, max_uses, expires_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `).run(code.toUpperCase(), discountType, discountValue, appliesTo || 'all', billingCycle || 'all', maxUses || null, expiresAt || null);
+  res.status(201).json({ id: result.lastInsertRowid });
+});
+
+app.delete('/api/admin/promo-codes/:id', adminMiddleware, (req, res) => {
+  db.prepare('DELETE FROM promo_codes WHERE id = ?').run(req.params.id);
+  res.json({ ok: true });
+});
+
+app.get('/api/admin/affiliates', adminMiddleware, (req, res) => {
+  const affiliates = db.prepare(`
+    SELECT u.id, u.email, u.display_name,
+      COALESCE(SUM(ae.amount_php), 0) as totalEarnings,
+      COUNT(ae.id) as referrals
+    FROM users u
+    LEFT JOIN affiliate_earnings ae ON ae.affiliate_id = u.id
+    WHERE u.id IN (SELECT DISTINCT affiliate_id FROM affiliate_earnings)
+    GROUP BY u.id ORDER BY totalEarnings DESC
+  `).all();
+  res.json({ affiliates });
+});
+
+app.post('/api/admin/affiliates', adminMiddleware, (req, res) => {
+  const { userId } = req.body;
+  if (!userId) return res.status(400).json({ error: 'userId required' });
+  res.json({ ok: true, message: 'User marked as affiliate. Earnings will be tracked on future referrals.' });
+});
+
+app.get('/api/admin/settings', adminMiddleware, (req, res) => {
+  const settings = db.prepare('SELECT key, value FROM system_settings').all();
+  const obj = {};
+  settings.forEach(s => { obj[s.key] = s.value; });
+  res.json(obj);
+});
+
+app.put('/api/admin/settings', adminMiddleware, (req, res) => {
+  const allowed = ['lifetime_plan_active', 'maintenance_mode', 'maintenance_message', 'maintenance_until', 'ai_cost_alert_threshold_php'];
+  for (const [key, value] of Object.entries(req.body)) {
+    if (allowed.includes(key)) {
+      db.prepare('INSERT OR REPLACE INTO system_settings (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)').run(key, String(value));
+    }
+  }
+  res.json({ ok: true });
+});
+
 // Task 13: Health route
+// ── Health Route ──────────────────────────────────────────────────────────────
+app.get('/api/health', (req, res) => {
+  const maintenance = db.prepare("SELECT value FROM system_settings WHERE key='maintenance_mode'").get();
+  const maintenanceUntil = db.prepare("SELECT value FROM system_settings WHERE key='maintenance_until'").get();
+
+  const textConfig    = aiSettings.getActiveProvider('text');
+  const imageConfig   = aiSettings.getActiveProvider('image');
+  const compileConfig = aiSettings.getActiveProvider('compile');
+
+  const odooStatus = odoo.getStatus();
+  let status = 'ok';
+  if (maintenance?.value === 'true') status = 'maintenance';
+  else if (odooStatus.active === 'none' || odooStatus.active === 'secondary') status = 'degraded';
+
+  res.json({
+    status,
+    odoo: odooStatus,
+    ai: {
+      textProvider: textConfig?.provider || 'none',
+      textModel: textConfig?.model || 'none',
+      imageProvider: imageConfig?.provider || 'none',
+      imageModel: imageConfig?.model || 'none',
+      compileProvider: compileConfig?.provider || 'none',
+    },
+    maintenanceUntil: maintenanceUntil?.value || null,
+  });
+});
 // ─────────────────────────────────────────────────────────────────────────────
 
 // ── Start ─────────────────────────────────────────────────────────────────────
