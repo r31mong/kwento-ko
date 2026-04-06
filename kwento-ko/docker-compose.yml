@@ -1,0 +1,10 @@
+services:
+  kwento-ko:
+    build: ./backend
+    ports:
+      - "${PORT:-3000}:3000"
+    env_file: .env
+    volumes:
+      - ./frontend:/app/frontend
+      - ./data:/app/data
+    restart: unless-stopped
