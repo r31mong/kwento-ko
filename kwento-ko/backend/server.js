@@ -440,7 +440,218 @@ app.post('/api/admin/login', async (req, res) => {
   const token = jwt.sign({ isAdmin: true, email, adminId: 0 }, JWT_SECRET, { expiresIn: '8h' });
   res.json({ token });
 });
-// Task 4:  AISettingsManager + admin AI settings routes
+// ── AISettingsManager ─────────────────────────────────────────────────────────
+class AISettingsManager {
+  constructor() {
+    this.cache = null;
+    this.cacheAt = 0;
+    this.TTL = 5 * 60 * 1000; // 5 minutes
+  }
+
+  _loadFromDb() {
+    const rows = db.prepare('SELECT * FROM ai_provider_settings WHERE is_active = 1').all();
+    const result = {};
+    for (const row of rows) {
+      result[row.feature] = {
+        provider: row.provider,
+        apiKey: row.api_key_enc ? decryptKey(row.api_key_enc) : null,
+        model: row.model,
+        extraConfig: row.extra_config ? JSON.parse(row.extra_config) : {},
+      };
+    }
+    return result;
+  }
+
+  refreshCache() {
+    this.cache = this._loadFromDb();
+    this.cacheAt = Date.now();
+  }
+
+  getActiveProvider(feature) {
+    if (!this.cache || Date.now() - this.cacheAt > this.TTL) {
+      this.refreshCache();
+    }
+    return this.cache[feature] || null;
+  }
+
+  updateProvider(feature, provider, apiKey, model, extraConfig, adminEmail, ipAddress) {
+    const existing = db.prepare('SELECT * FROM ai_provider_settings WHERE feature = ? AND provider = ?').get(feature, provider);
+    if (!existing) return { ok: false, error: 'Provider not found' };
+
+    const updates = {};
+    if (apiKey) {
+      updates.api_key_enc = encryptKey(apiKey);
+      updates.api_key_hint = keyHint(apiKey);
+    }
+    if (model) updates.model = model;
+    if (extraConfig !== undefined) updates.extra_config = JSON.stringify(extraConfig);
+    updates.updated_at = new Date().toISOString();
+    updates.updated_by = adminEmail;
+
+    const sets = Object.keys(updates).map(k => `${k} = ?`).join(', ');
+    db.prepare(`UPDATE ai_provider_settings SET ${sets} WHERE feature = ? AND provider = ?`)
+      .run(...Object.values(updates), feature, provider);
+
+    db.prepare(`
+      INSERT INTO ai_key_audit_log (feature, provider, action, result, admin_email, ip_address)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).run(feature, provider, apiKey ? 'key_updated' : 'model_changed', 'success', adminEmail, ipAddress);
+
+    this.refreshCache();
+    return { ok: true };
+  }
+
+  switchActiveProvider(feature, provider, adminEmail, ipAddress) {
+    const target = db.prepare('SELECT id FROM ai_provider_settings WHERE feature = ? AND provider = ?').get(feature, provider);
+    if (!target) return { ok: false, error: 'Provider not found' };
+
+    db.prepare('UPDATE ai_provider_settings SET is_active = 0 WHERE feature = ?').run(feature);
+    db.prepare('UPDATE ai_provider_settings SET is_active = 1 WHERE feature = ? AND provider = ?').run(feature, provider);
+    db.prepare(`
+      INSERT INTO ai_key_audit_log (feature, provider, action, result, admin_email, ip_address)
+      VALUES (?, ?, 'provider_switched', 'success', ?, ?)
+    `).run(feature, provider, adminEmail, ipAddress);
+
+    this.refreshCache();
+    return { ok: true };
+  }
+
+  async testConnection(feature, provider, apiKey, model, extraConfig = {}) {
+    const start = Date.now();
+    const key = apiKey === '__USE_STORED__'
+      ? (() => { const row = db.prepare('SELECT api_key_enc FROM ai_provider_settings WHERE feature = ? AND provider = ?').get(feature, provider); return row ? decryptKey(row.api_key_enc) : null; })()
+      : apiKey;
+
+    try {
+      if (provider === 'gemini') {
+        const { GoogleGenerativeAI } = require('@google/generative-ai');
+        const genAI = new GoogleGenerativeAI(key);
+        const m = genAI.getGenerativeModel({ model: model || 'gemini-2.0-flash' });
+        const result = await m.generateContent('Reply with exactly one word: OK');
+        const text = result.response.text();
+        if (!text.includes('OK')) throw new Error('Unexpected response: ' + text);
+      } else if (provider === 'openrouter') {
+        const resp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json', 'HTTP-Referer': 'https://alibebeph.com', 'X-Title': 'Kwento Ko' },
+          body: JSON.stringify({ model, messages: [{ role: 'user', content: 'Reply with exactly one word: OK' }] }),
+          signal: AbortSignal.timeout(15000),
+        });
+        const data = await resp.json();
+        if (!data.choices?.[0]?.message?.content?.includes('OK')) throw new Error('Unexpected response');
+      } else if (provider === 'ollama') {
+        const host = extraConfig.host || 'http://localhost:11434';
+        const resp = await fetch(`${host}/api/tags`, { signal: AbortSignal.timeout(8000) });
+        if (!resp.ok) throw new Error('Ollama unreachable');
+        const tags = await resp.json();
+        const models = tags.models?.map(m => m.name) || [];
+        if (!models.some(m => m.startsWith(model.split(':')[0]))) {
+          throw new Error(`Model ${model} not found on this Ollama instance`);
+        }
+      } else if (provider === 'fal') {
+        const { fal } = require('@fal-ai/client');
+        fal.config({ credentials: key });
+        await fal.run(model || 'fal-ai/flux/dev', { input: { prompt: 'sunshine', num_inference_steps: 1 } });
+      } else if (provider === 'replicate') {
+        const Replicate = require('replicate');
+        const replicate = new Replicate({ auth: key });
+        const output = await replicate.run(model, { input: { prompt: 'sunshine', num_inference_steps: 1 } });
+        if (!output) throw new Error('No output from Replicate');
+      } else {
+        throw new Error(`Unknown provider: ${provider}`);
+      }
+
+      const latencyMs = Date.now() - start;
+      db.prepare(`UPDATE ai_provider_settings SET last_tested_at = CURRENT_TIMESTAMP, last_test_ok = 1, last_test_msg = ? WHERE feature = ? AND provider = ?`)
+        .run(`Connected in ${latencyMs}ms`, feature, provider);
+      return { ok: true, latencyMs, message: `Connected successfully in ${latencyMs}ms`, model };
+    } catch (err) {
+      const latencyMs = Date.now() - start;
+      db.prepare(`UPDATE ai_provider_settings SET last_tested_at = CURRENT_TIMESTAMP, last_test_ok = 0, last_test_msg = ? WHERE feature = ? AND provider = ?`)
+        .run(err.message, feature, provider);
+      return { ok: false, latencyMs, message: err.message, model };
+    }
+  }
+}
+
+const aiSettings = new AISettingsManager();
+// Auto-refresh cache every 5 minutes
+setInterval(() => aiSettings.refreshCache(), 5 * 60 * 1000).unref();
+
+// ── Admin AI Settings Routes ──────────────────────────────────────────────────
+const adminAiRateLimit = rateLimit({ windowMs: 5 * 60 * 1000, max: 10, keyGenerator: req => req.adminEmail || req.ip });
+
+app.get('/api/admin/ai-settings', adminMiddleware, (req, res) => {
+  const rows = db.prepare('SELECT feature, provider, is_active, api_key_hint, model, extra_config, last_tested_at, last_test_ok, last_test_msg, updated_at, updated_by FROM ai_provider_settings ORDER BY feature, provider').all();
+  const grouped = { text: [], image: [], compile: [] };
+  for (const row of rows) {
+    if (grouped[row.feature]) {
+      grouped[row.feature].push({
+        ...row,
+        is_active: !!row.is_active,
+        last_test_ok: row.last_test_ok === null ? null : !!row.last_test_ok,
+        extra_config: row.extra_config ? JSON.parse(row.extra_config) : {},
+      });
+    }
+  }
+  res.json(grouped);
+});
+
+app.post('/api/admin/ai-settings/test', adminMiddleware, adminAiRateLimit, async (req, res) => {
+  const { feature, provider, apiKey, model, extraConfig } = req.body;
+  if (!feature || !provider) return res.status(400).json({ error: 'feature and provider required' });
+
+  db.prepare(`
+    INSERT INTO ai_key_audit_log (feature, provider, action, result, admin_email, ip_address)
+    VALUES (?, ?, 'test_run', 'initiated', ?, ?)
+  `).run(feature, provider, req.adminEmail, req.ip);
+
+  const result = await aiSettings.testConnection(feature, provider, apiKey || '__USE_STORED__', model, extraConfig || {});
+
+  db.prepare(`
+    INSERT INTO ai_key_audit_log (feature, provider, action, result, admin_email, ip_address)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `).run(feature, provider, result.ok ? 'test_passed' : 'test_failed', result.message, req.adminEmail, req.ip);
+
+  res.json(result);
+});
+
+app.put('/api/admin/ai-settings/:feature/active', adminMiddleware, (req, res) => {
+  const { feature } = req.params;
+  const { provider } = req.body;
+  if (!provider) return res.status(400).json({ error: 'provider required' });
+  const result = aiSettings.switchActiveProvider(feature, provider, req.adminEmail, req.ip);
+  if (!result.ok) return res.status(404).json(result);
+  res.json({ ok: true, activeProvider: provider });
+});
+
+app.get('/api/admin/ai-settings/audit', adminMiddleware, (req, res) => {
+  const { limit = 50, feature, provider } = req.query;
+  let query = 'SELECT * FROM ai_key_audit_log';
+  const params = [];
+  const conditions = [];
+  if (feature) { conditions.push('feature = ?'); params.push(feature); }
+  if (provider) { conditions.push('provider = ?'); params.push(provider); }
+  if (conditions.length) query += ' WHERE ' + conditions.join(' AND ');
+  query += ' ORDER BY created_at DESC LIMIT ?';
+  params.push(Math.min(parseInt(limit) || 50, 200));
+  const logs = db.prepare(query).all(...params);
+  res.json({ logs });
+});
+
+app.put('/api/admin/ai-settings/:feature/:provider', adminMiddleware, async (req, res) => {
+  const { feature, provider } = req.params;
+  const { apiKey, model, extraConfig } = req.body;
+  const result = aiSettings.updateProvider(feature, provider, apiKey, model, extraConfig, req.adminEmail, req.ip);
+  if (!result.ok) return res.status(404).json(result);
+
+  // Auto-test after update
+  const testKey = apiKey || '__USE_STORED__';
+  const row = db.prepare('SELECT model FROM ai_provider_settings WHERE feature = ? AND provider = ?').get(feature, provider);
+  const testResult = await aiSettings.testConnection(feature, provider, testKey, model || row?.model, extraConfig || {});
+  res.json({ ok: true, testResult });
+});
+
 // Task 5:  AIProviderFactory
 // Task 6:  OdooClient
 // Task 7:  Story generation routes
