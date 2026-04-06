@@ -1037,8 +1037,397 @@ Output this exact JSON for ONE page only:
   }
 });
 
-// Task 6:  OdooClient
-// Task 7:  Story generation routes
+// ── OdooClient ────────────────────────────────────────────────────────────────
+const xmlrpc = require('xmlrpc');
+
+class OdooClient {
+  constructor(primaryCfg, secondaryCfg) {
+    this.primary = primaryCfg;
+    this.secondary = secondaryCfg;
+    this.active = 'primary';
+    this.failoverCount = 0;
+    this.lastFailover = null;
+    this.primaryDown = false;
+    this.secondaryDown = false;
+    this.maintenanceSince = null;
+
+    // Health check loop every 60s
+    this._healthInterval = setInterval(() => this._healthCheck(), 60 * 1000).unref();
+  }
+
+  _makeClients(cfg) {
+    const parsed = new URL(cfg.url);
+    const opts = { host: parsed.hostname, port: parseInt(parsed.port) || 8069 };
+    return {
+      common: xmlrpc.createClient({ ...opts, path: '/xmlrpc/2/common' }),
+      models: xmlrpc.createClient({ ...opts, path: '/xmlrpc/2/object' }),
+    };
+  }
+
+  _call(client, method, params) {
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error('Odoo timeout')), 5000);
+      client.methodCall(method, params, (err, val) => {
+        clearTimeout(timer);
+        err ? reject(err) : resolve(val);
+      });
+    });
+  }
+
+  async _authenticate(cfg) {
+    const { common } = this._makeClients(cfg);
+    return this._call(common, 'authenticate', [cfg.db, cfg.user, cfg.apiKey, {}]);
+  }
+
+  async execute(model, method, args, kwargs = {}) {
+    // Try primary first
+    try {
+      const uid = await this._authenticate(this.primary);
+      const { models } = this._makeClients(this.primary);
+      const result = await this._call(models, 'execute_kw', [this.primary.db, uid, this.primary.apiKey, model, method, args, kwargs]);
+      this.primaryDown = false;
+      this.maintenanceSince = null;
+      this.active = 'primary';
+      return result;
+    } catch (err) {
+      console.warn(`[Odoo] Primary failed: ${err.message} — trying secondary`);
+      if (!this.primaryDown) {
+        this.primaryDown = true;
+        this.failoverCount++;
+        this.lastFailover = new Date().toISOString();
+        this.active = 'secondary';
+      }
+    }
+
+    // Try secondary
+    try {
+      const uid = await this._authenticate(this.secondary);
+      const { models } = this._makeClients(this.secondary);
+      const result = await this._call(models, 'execute_kw', [this.secondary.db, uid, this.secondary.apiKey, model, method, args, kwargs]);
+      this.secondaryDown = false;
+      return result;
+    } catch (err) {
+      console.warn(`[Odoo] Secondary also failed: ${err.message}`);
+      this.secondaryDown = true;
+      this.active = 'none';
+      if (!this.maintenanceSince) this.maintenanceSince = new Date();
+      throw new Error('Both Odoo instances unavailable');
+    }
+  }
+
+  async _healthCheck() {
+    try {
+      const uid = await this._authenticate(this.primary);
+      if (uid) { this.primaryDown = false; this.active = this.secondaryDown ? 'primary' : this.active; }
+    } catch { this.primaryDown = true; }
+
+    try {
+      const uid = await this._authenticate(this.secondary);
+      if (uid) this.secondaryDown = false;
+    } catch { this.secondaryDown = true; }
+
+    if (!this.primaryDown && !this.secondaryDown) {
+      this.active = 'primary';
+      this.maintenanceSince = null;
+    }
+  }
+
+  isFullyDown() { return this.primaryDown && this.secondaryDown; }
+
+  maintenanceGrantsAccess() {
+    if (!this.maintenanceSince) return false;
+    const hours = (Date.now() - this.maintenanceSince) / 3600000;
+    return hours < 24;
+  }
+
+  getStatus() {
+    const maintenanceUntil = this.maintenanceSince
+      ? new Date(this.maintenanceSince.getTime() + 24 * 3600000).toISOString()
+      : null;
+    return {
+      primary: this.primaryDown ? 'down' : 'up',
+      secondary: this.secondaryDown ? 'down' : 'up',
+      active: this.active,
+      failoverCount: this.failoverCount,
+      lastFailover: this.lastFailover,
+      maintenanceUntil,
+    };
+  }
+
+  queueSync(payload) {
+    db.prepare('INSERT INTO odoo_sync_queue (payload) VALUES (?)').run(JSON.stringify(payload));
+  }
+
+  async flushSyncQueue() {
+    const pending = db.prepare('SELECT * FROM odoo_sync_queue WHERE attempts < 5 ORDER BY created_at LIMIT 20').all();
+    for (const item of pending) {
+      try {
+        const payload = JSON.parse(item.payload);
+        await this.logUsageEvent(payload.userId, payload.action, payload.provider, payload.model, payload.tokensUsed);
+        db.prepare('DELETE FROM odoo_sync_queue WHERE id = ?').run(item.id);
+      } catch {
+        db.prepare('UPDATE odoo_sync_queue SET attempts = attempts + 1, last_attempt = CURRENT_TIMESTAMP WHERE id = ?').run(item.id);
+      }
+    }
+  }
+
+  async createPartner(email, displayName) {
+    return this.execute('res.partner', 'create', [{
+      name: displayName,
+      email,
+      lang: 'en_US',
+      comment: 'Kwento Ko user — registered via app',
+    }]);
+  }
+
+  async getSubscriptionTier(email) {
+    const partners = await this.execute('res.partner', 'search_read',
+      [[['email', '=', email]]], { fields: ['id'], limit: 1 });
+    if (!partners.length) return null;
+
+    const partnerId = partners[0].id;
+    const subs = await this.execute('sale.subscription', 'search_read',
+      [[['partner_id', '=', partnerId], ['state', 'in', ['open', 'pending']]]],
+      { fields: ['id', 'template_id', 'stage_id'], limit: 1 });
+
+    if (!subs.length) return 'free';
+    const templateName = subs[0].template_id?.[1] || '';
+    if (templateName.toLowerCase().includes('business') || templateName.toLowerCase().includes('negosyo')) return 'business';
+    if (templateName.toLowerCase().includes('pro')) return 'pro';
+    if (templateName.toLowerCase().includes('lifetime')) return 'pro';
+    return 'free';
+  }
+
+  async logUsageEvent(userId, action, provider, model, tokensUsed) {
+    if (!this.primary.url || this.primary.url.includes('192.168.1.XX')) return;
+    const user = db.prepare('SELECT email FROM users WHERE id = ?').get(userId);
+    if (!user) return;
+    // Production: call Odoo to log usage event
+  }
+}
+
+// Instantiate OdooClient (gracefully handles missing config)
+const odooCfg = {
+  primary: {
+    url: process.env.ODOO_PRIMARY_URL || '',
+    db: process.env.ODOO_PRIMARY_DB || 'odoo',
+    user: process.env.ODOO_PRIMARY_USER || 'admin',
+    apiKey: process.env.ODOO_PRIMARY_API || '',
+  },
+  secondary: {
+    url: process.env.ODOO_SECONDARY_URL || '',
+    db: process.env.ODOO_SECONDARY_DB || 'odoo',
+    user: process.env.ODOO_SECONDARY_USER || 'admin',
+    apiKey: process.env.ODOO_SECONDARY_API || '',
+  },
+};
+const odoo = new OdooClient(odooCfg.primary, odooCfg.secondary);
+
+// Flush Odoo sync queue every 5 minutes
+setInterval(() => odoo.flushSyncQueue(), 5 * 60 * 1000).unref();
+
+// ── Image Generation Route ────────────────────────────────────────────────────
+app.post('/api/generate-image', authMiddleware, genRateLimit, async (req, res) => {
+  const { promptText, customization, storyId, pageIndex } = req.body;
+  if (!promptText) return res.status(400).json({ error: 'promptText is required' });
+
+  const user = db.prepare('SELECT tier, is_tester, tester_limits FROM users WHERE id = ?').get(req.userId);
+  const tier = user.tier || 'free';
+  let limits;
+  try {
+    limits = user.is_tester && user.tester_limits ? JSON.parse(user.tester_limits) : null;
+  } catch { limits = null; }
+  limits = limits || TIER_LIMITS[tier] || TIER_LIMITS.free;
+
+  if (limits.imagesPerMonth === 0) {
+    return res.status(403).json({ error: 'Image generation is not available on the Free plan. Upgrade to Pro to generate images.' });
+  }
+
+  if (limits.imagesPerMonth !== -1) {
+    db.prepare('INSERT OR IGNORE INTO usage_counters (user_id) VALUES (?)').run(req.userId);
+    const counters = db.prepare('SELECT images_month FROM usage_counters WHERE user_id = ?').get(req.userId);
+    if ((counters?.images_month || 0) >= limits.imagesPerMonth) {
+      return res.status(429).json({ error: `Monthly image limit of ${limits.imagesPerMonth} reached.` });
+    }
+  }
+
+  const finalPrompt = customization ? `${promptText}. ${customization}` : promptText;
+
+  try {
+    const base64 = await aiFactory.generateImage(finalPrompt);
+
+    let savedId = null;
+    if (storyId) {
+      const imgProvider = aiSettings.getActiveProvider('image');
+      const result = db.prepare(`
+        INSERT INTO story_images (story_id, page_index, prompt_used, provider, model, image_data)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `).run(storyId, pageIndex ?? null, finalPrompt,
+        imgProvider?.provider || 'unknown',
+        imgProvider?.model || 'unknown',
+        base64);
+      savedId = result.lastInsertRowid;
+    }
+
+    const imgProvider = aiSettings.getActiveProvider('image');
+    db.prepare('UPDATE usage_counters SET images_month = images_month + 1 WHERE user_id = ?').run(req.userId);
+    db.prepare('INSERT INTO usage_log (user_id, action, provider, model) VALUES (?, ?, ?, ?)')
+      .run(req.userId, 'image_generate', imgProvider?.provider || 'unknown', imgProvider?.model || 'unknown');
+
+    res.json({ imageBase64: base64, imageUrl: `data:image/png;base64,${base64}`, savedId });
+  } catch (err) {
+    console.error('generate-image error:', err);
+    res.status(500).json({ error: 'Image generation failed. Please try again.' });
+  }
+});
+
+// ── Book Compilation Route ────────────────────────────────────────────────────
+app.post('/api/compile-book', authMiddleware, async (req, res) => {
+  const { storyId, format, dedication, includeDiscussionGuide, includePrintGuide, layoutTemplate, removeBranding, emailPDF } = req.body;
+  if (!storyId || !format) return res.status(400).json({ error: 'storyId and format are required' });
+
+  const user = db.prepare('SELECT tier, is_tester, tester_limits, email, display_name FROM users WHERE id = ?').get(req.userId);
+  const tier = user.tier || 'free';
+  let limits;
+  try {
+    limits = user.is_tester && user.tester_limits ? JSON.parse(user.tester_limits) : null;
+  } catch { limits = null; }
+  limits = limits || TIER_LIMITS[tier] || TIER_LIMITS.free;
+  if (!limits.canCompileBook) return res.status(403).json({ error: 'Book compilation requires a Pro or Business plan.' });
+
+  const story = db.prepare('SELECT * FROM stories WHERE id = ? AND user_id = ?').get(storyId, req.userId);
+  if (!story) return res.status(404).json({ error: 'Story not found' });
+
+  const storyData = JSON.parse(story.story_data);
+  const images = db.prepare('SELECT page_index, image_data FROM story_images WHERE story_id = ?').all(storyId);
+  const imageMap = {};
+  images.forEach(img => { imageMap[img.page_index] = img.image_data; });
+
+  try {
+    const layoutJSON = await aiFactory.generateLayout(storyData, format, layoutTemplate || 'Classic');
+
+    const formatDims = {
+      'A5 Booklet on A4':  { width: '297mm', height: '210mm' },
+      'A4 Portrait':       { width: '210mm', height: '297mm' },
+      'US Letter / KDP':   { width: '6in',   height: '9in'   },
+      'Square 8x8':        { width: '8in',   height: '8in'   },
+    };
+    const dims = formatDims[format] || { width: '210mm', height: '297mm' };
+
+    const showWatermark = limits.watermark && !removeBranding;
+    const showBranding  = !removeBranding && tier !== 'business';
+
+    const printInstructions = {
+      'A5 Booklet on A4': 'Step 1: Select "Print on both sides"\nStep 2: Set flip to "Short edge"\nStep 3: Select "Booklet" layout\nStep 4: Fold and staple in the middle',
+      'A4 Portrait':       'Step 1: Select A4 paper size\nStep 2: Print single-sided or double-sided\nStep 3: Bind pages together',
+      'US Letter / KDP':   'Step 1: Upload this PDF to kdp.amazon.com\nStep 2: Select 6×9 inch trim size\nStep 3: Follow KDP interior upload instructions',
+      'Square 8x8':        'Step 1: Upload to your preferred photo book service\nStep 2: Select 8×8 inch square format\nStep 3: Print and enjoy!',
+    }[format] || '';
+
+    const pagesHtml = storyData.pages?.map(page => {
+      const imgData = imageMap[page.pageNumber];
+      const imgHtml = imgData ? `<img src="data:image/png;base64,${imgData}" style="max-width:100%;max-height:45%;object-fit:contain;" />` : '';
+      const causeEffectHtml = page.causeEffect ? `
+        <div style="background:#FFF3CD;border-left:4px solid #FF9800;padding:8px;margin:8px 0;font-size:0.85em;">
+          <strong>Cause &amp; Effect:</strong> ${page.causeEffect.wrongChoice} → ${page.causeEffect.consequence} → ${page.causeEffect.resolution}
+        </div>` : '';
+      return `
+        <div class="page" style="page-break-before:always;padding:20mm;font-family:Georgia,serif;">
+          <div style="text-align:right;font-size:0.8em;color:#999;">Page ${page.pageNumber}</div>
+          ${imgHtml}
+          <p style="font-size:${layoutJSON.storyPages?.textFontSize || 16}pt;line-height:${layoutJSON.storyPages?.lineHeight || 1.6};">${page.text}</p>
+          ${page.textEnglish ? `<p style="font-size:${layoutJSON.storyPages?.translationFontSize || 13}pt;color:#555;font-style:italic;">${page.textEnglish}</p>` : ''}
+          ${causeEffectHtml}
+          ${showWatermark ? '<div style="position:fixed;bottom:5mm;right:5mm;font-size:8pt;color:#ccc;opacity:0.5;">Created with Kwento Ko</div>' : ''}
+        </div>`;
+    }).join('') || '';
+
+    const discussionGuideHtml = (includeDiscussionGuide && storyData.discussionGuide) ? `
+      <div class="page" style="page-break-before:always;padding:20mm;">
+        <h2>Discussion Guide</h2>
+        <pre style="white-space:pre-wrap;">${JSON.stringify(storyData.discussionGuide, null, 2)}</pre>
+      </div>` : '';
+
+    const printGuideHtml = includePrintGuide ? `
+      <div class="page" style="page-break-before:always;padding:20mm;">
+        <h2>How to Print This Book</h2>
+        <pre style="white-space:pre-wrap;">${printInstructions}</pre>
+      </div>` : '';
+
+    const html = `<!DOCTYPE html><html><head>
+      <meta charset="UTF-8">
+      <style>
+        @page { size: ${dims.width} ${dims.height}; margin: 0; }
+        body { margin: 0; font-family: 'Nunito', Georgia, serif; }
+        .page { width: ${dims.width}; min-height: ${dims.height}; box-sizing: border-box; }
+      </style>
+    </head><body>
+      <!-- Cover -->
+      <div class="page" style="background:${layoutJSON.coverPage?.backgroundColor || '#FFF8E1'};padding:20mm;display:flex;flex-direction:column;justify-content:center;align-items:center;">
+        <h1 style="font-size:${layoutJSON.coverPage?.titleFontSize || 32}pt;color:${layoutJSON.coverPage?.accentColor || '#FF6B6B'};text-align:center;">${storyData.title || story.title}</h1>
+        <p style="font-size:16pt;">By ${user.display_name}</p>
+        ${showBranding ? '<p style="font-size:10pt;color:#999;">Created with Kwento Ko | alibebeph.com</p>' : ''}
+      </div>
+      <!-- Dedication -->
+      <div class="page" style="page-break-before:always;padding:20mm;display:flex;align-items:center;justify-content:center;">
+        <p style="font-style:italic;font-size:14pt;text-align:center;">${dedication ? `This book is dedicated to...<br><br>${dedication}` : 'This book is dedicated to all the little dreamers.'}</p>
+      </div>
+      ${printGuideHtml}
+      ${pagesHtml}
+      <!-- Moral -->
+      <div class="page" style="page-break-before:always;background:${layoutJSON.coverPage?.accentColor || '#FF6B6B'};padding:20mm;display:flex;align-items:center;justify-content:center;">
+        <div style="text-align:center;color:white;">
+          <h2>Moral of the Story</h2>
+          <p style="font-size:16pt;">${storyData.moral || ''}</p>
+          ${storyData.moralEnglish ? `<p style="font-size:13pt;opacity:0.85;">${storyData.moralEnglish}</p>` : ''}
+        </div>
+      </div>
+      ${discussionGuideHtml}
+      <!-- Back Cover -->
+      <div class="page" style="page-break-before:always;padding:20mm;text-align:center;">
+        <p>${storyData.backCoverSummary || ''}</p>
+        <p style="font-size:10pt;color:#999;">© 2025 Crafts by AlibebePH | alibebeph.com | All rights reserved.</p>
+      </div>
+    </body></html>`;
+
+    const puppeteer = require('puppeteer-core');
+    const browser = await puppeteer.launch({
+      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium-browser',
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    });
+    const page = await browser.newPage();
+    await page.setContent(html, { waitUntil: 'networkidle0' });
+    const pdfBuffer = await page.pdf({ width: dims.width, height: dims.height, printBackground: true });
+    await browser.close();
+
+    db.prepare('UPDATE usage_counters SET compiles_month = compiles_month + 1 WHERE user_id = ?').run(req.userId);
+    db.prepare('INSERT INTO usage_log (user_id, action, provider, model) VALUES (?, ?, ?, ?)')
+      .run(req.userId, 'book_compile', 'puppeteer', 'chromium');
+
+    if (emailPDF && process.env.SMTP_USER) {
+      const nodemailer = require('nodemailer');
+      const transporter = nodemailer.createTransport({
+        host: process.env.SMTP_HOST || 'smtp.gmail.com',
+        port: parseInt(process.env.SMTP_PORT) || 587,
+        auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+      });
+      transporter.sendMail({
+        from: process.env.SMTP_USER,
+        to: user.email,
+        subject: `Your Kwento Ko book: ${story.title}`,
+        text: 'Your compiled book is attached!',
+        attachments: [{ filename: `${story.title}.pdf`, content: pdfBuffer }],
+      }).catch(err => console.error('Email PDF error:', err));
+    }
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${story.title.replace(/[^a-z0-9]/gi, '_')}.pdf"`);
+    res.send(pdfBuffer);
+  } catch (err) {
+    console.error('compile-book error:', err);
+    res.status(500).json({ error: 'Book compilation failed. Please try again.' });
+  }
+});
 // Task 8:  Image generation route
 // Task 9:  Book compilation route
 // Task 10: Library CRUD routes
