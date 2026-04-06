@@ -7,6 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;600;700;800&family=Nunito:wght@400;600;700&family=Quicksand:wght@500;600;700&family=Pacifico&display=swap" rel="stylesheet" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://unpkg.com/docx@8.5.0/build/index.js"></script>
   <style>
     :root {
       --sun-yellow: #FFD63A;
@@ -523,11 +524,11 @@
   </div>
   <div style="max-width:1000px;margin:24px auto;padding:0 16px;">
     <div id="admin-nav" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;">
-      <button class="pill selected" onclick="showAdminTab('overview')">Overview</button>
-      <button class="pill" onclick="showAdminTab('ai-settings')">AI Settings</button>
-      <button class="pill" onclick="showAdminTab('users')">Users</button>
-      <button class="pill" onclick="showAdminTab('promo')">Promo Codes</button>
-      <button class="pill" onclick="showAdminTab('settings')">System Settings</button>
+      <button class="pill selected" onclick="showAdminTab('overview', event)">Overview</button>
+      <button class="pill" onclick="showAdminTab('ai-settings', event)">AI Settings</button>
+      <button class="pill" onclick="showAdminTab('users', event)">Users</button>
+      <button class="pill" onclick="showAdminTab('promo', event)">Promo Codes</button>
+      <button class="pill" onclick="showAdminTab('settings', event)">System Settings</button>
     </div>
     <div id="admin-overview" class="admin-section"></div>
     <div id="admin-ai-settings" class="admin-section" style="display:none;"></div>
@@ -1349,7 +1350,7 @@ async function adminApi(method, endpoint, body) {
   return res.json();
 }
 
-function showAdminTab(name) {
+function showAdminTab(name, event) {
   document.querySelectorAll('#admin-nav .pill').forEach(p => p.classList.remove('selected'));
   event.target.classList.add('selected');
   document.querySelectorAll('.admin-section').forEach(s => s.style.display = 'none');
