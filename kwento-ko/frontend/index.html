@@ -877,7 +877,7 @@ async function generateCharacter() {
     document.getElementById('story-gen-section').style.display = 'block';
   } catch (err) {
     hideLoading(interval);
-    resultEl.innerHTML = `<p style="color:#e53e3e;text-align:center;padding:20px;">${err.message}</p><div class="btn-row"><button class="btn-ghost" onclick="generateCharacter()">🔄 Try Again</button></div>`;
+    resultEl.innerHTML = `<p style="color:#e53e3e;text-align:center;padding:20px;">${escapeHtml(err.message)}</p><div class="btn-row"><button class="btn-ghost" onclick="generateCharacter()">🔄 Try Again</button></div>`;
   }
 }
 
@@ -1302,7 +1302,7 @@ async function loadLibrary() {
         </div>
       </div>`).join('');
   } catch (err) {
-    container.innerHTML = `<p style="color:#e53e3e;text-align:center;">${err.message}</p>`;
+    container.innerHTML = `<p style="color:#e53e3e;text-align:center;">${escapeHtml(err.message)}</p>`;
   }
 }
 
