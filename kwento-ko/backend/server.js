@@ -298,7 +298,141 @@ const TIER_LIMITS = {
 };
 
 // ── PLACEHOLDER: Routes added in later tasks ──────────────────────────────────
-// Task 3:  Auth routes
+// ── Auth Routes ───────────────────────────────────────────────────────────────
+app.post('/api/auth/register', async (req, res) => {
+  const { email, password, displayName, avatarEmoji, referralCode } = req.body;
+  if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
+  if (password.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters' });
+
+  const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
+  if (existing) return res.status(409).json({ error: 'Email already registered' });
+
+  const hash = await bcrypt.hash(password, 12);
+  const refCode = generateReferralCode();
+
+  let referrerId = null;
+  if (referralCode) {
+    const referrer = db.prepare('SELECT id FROM users WHERE referral_code = ?').get(referralCode);
+    if (referrer) referrerId = referrer.id;
+  }
+
+  const result = db.prepare(`
+    INSERT INTO users (email, password_hash, display_name, avatar_emoji, referral_code, referred_by)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `).run(email, hash, displayName || email.split('@')[0], avatarEmoji || '📚', refCode, referrerId);
+
+  const userId = result.lastInsertRowid;
+
+  db.prepare('INSERT OR IGNORE INTO usage_counters (user_id) VALUES (?)').run(userId);
+
+  if (referrerId) {
+    db.prepare('INSERT INTO referrals (referrer_id, referred_id) VALUES (?, ?)').run(referrerId, userId);
+  }
+
+  const user = db.prepare('SELECT id, email, display_name, avatar_emoji, tier, referral_code FROM users WHERE id = ?').get(userId);
+  const token = makeToken(userId);
+
+  res.status(201).json({
+    token,
+    user: {
+      id: user.id,
+      email: user.email,
+      displayName: user.display_name,
+      avatarEmoji: user.avatar_emoji,
+      tier: user.tier,
+      referralCode: user.referral_code,
+    }
+  });
+});
+
+app.post('/api/auth/login', async (req, res) => {
+  const { email, password } = req.body;
+  if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
+
+  const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
+  if (!user) return res.status(401).json({ error: 'Invalid email or password' });
+  if (user.is_suspended) return res.status(403).json({ error: 'Account suspended' });
+
+  const valid = await bcrypt.compare(password, user.password_hash);
+  if (!valid) return res.status(401).json({ error: 'Invalid email or password' });
+
+  db.prepare('UPDATE users SET last_active_at = CURRENT_TIMESTAMP WHERE id = ?').run(user.id);
+  const token = makeToken(user.id);
+
+  res.json({
+    token,
+    user: {
+      id: user.id,
+      email: user.email,
+      displayName: user.display_name,
+      avatarEmoji: user.avatar_emoji,
+      tier: user.tier,
+      isTester: !!user.is_tester,
+      referralCode: user.referral_code,
+    }
+  });
+});
+
+app.get('/api/auth/me', authMiddleware, (req, res) => {
+  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.userId);
+  if (!user) return res.status(404).json({ error: 'User not found' });
+
+  db.prepare('UPDATE users SET last_active_at = CURRENT_TIMESTAMP WHERE id = ?').run(user.id);
+
+  const today = new Date().toISOString().slice(0, 10);
+  const thisMonth = today.slice(0, 7);
+  const counters = db.prepare('SELECT * FROM usage_counters WHERE user_id = ?').get(req.userId);
+
+  if (counters) {
+    if (counters.last_reset_day !== today) {
+      db.prepare('UPDATE usage_counters SET stories_today = 0, last_reset_day = ? WHERE user_id = ?').run(today, req.userId);
+    }
+    if (counters.last_reset_month !== thisMonth) {
+      db.prepare('UPDATE usage_counters SET stories_month = 0, images_month = 0, compiles_month = 0, last_reset_month = ? WHERE user_id = ?').run(thisMonth, req.userId);
+    }
+  }
+
+  const fresh = db.prepare('SELECT * FROM usage_counters WHERE user_id = ?').get(req.userId);
+  const tier = user.tier || 'free';
+  const limits = user.is_tester && user.tester_limits
+    ? JSON.parse(user.tester_limits)
+    : TIER_LIMITS[tier] || TIER_LIMITS.free;
+
+  res.json({
+    user: {
+      id: user.id,
+      email: user.email,
+      displayName: user.display_name,
+      avatarEmoji: user.avatar_emoji,
+      tier,
+      isTester: !!user.is_tester,
+      testerNote: user.tester_note,
+      referralCode: user.referral_code,
+    },
+    subscription: {
+      tier,
+      ...limits,
+      isTester: !!user.is_tester,
+      testerNote: user.tester_note,
+    },
+    usageToday: { stories: fresh?.stories_today || 0 },
+    usageMonth: {
+      stories: fresh?.stories_month || 0,
+      images: fresh?.images_month || 0,
+      compiles: fresh?.compiles_month || 0,
+    },
+  });
+});
+
+// Admin login (separate from user auth)
+app.post('/api/admin/login', async (req, res) => {
+  const { email, password } = req.body;
+  if (email !== ADMIN_EMAIL || password !== ADMIN_PASSWORD) {
+    return res.status(401).json({ error: 'Invalid admin credentials' });
+  }
+  const token = jwt.sign({ isAdmin: true, email, adminId: 0 }, JWT_SECRET, { expiresIn: '8h' });
+  res.json({ token });
+});
 // Task 4:  AISettingsManager + admin AI settings routes
 // Task 5:  AIProviderFactory
 // Task 6:  OdooClient
