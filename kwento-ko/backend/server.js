@@ -266,6 +266,9 @@ function authMiddleware(req, res, next) {
   }
   try {
     const payload = jwt.verify(header.slice(7), JWT_SECRET);
+    const user = db.prepare('SELECT id, is_suspended FROM users WHERE id = ?').get(payload.userId);
+    if (!user) return res.status(401).json({ error: 'User not found' });
+    if (user.is_suspended) return res.status(403).json({ error: 'Account suspended' });
     req.userId = payload.userId;
     next();
   } catch {
@@ -1476,7 +1479,13 @@ app.get('/api/library/:id', authMiddleware, (req, res) => {
   const story = db.prepare('SELECT * FROM stories WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
   if (!story) return res.status(404).json({ error: 'Story not found' });
   const images = db.prepare('SELECT id, page_index, prompt_used, image_data FROM story_images WHERE story_id = ?').all(story.id);
-  res.json({ ...story, storyData: JSON.parse(story.story_data), images });
+  let storyData;
+  try {
+    storyData = JSON.parse(story.story_data);
+  } catch {
+    storyData = {};
+  }
+  res.json({ ...story, storyData, images });
 });
 
 app.put('/api/library/:id', authMiddleware, (req, res) => {
@@ -1581,6 +1590,7 @@ app.get('/api/admin/overview', adminMiddleware, (req, res) => {
   const todayImages    = db.prepare("SELECT COUNT(*) as c FROM usage_log WHERE action='image_generate' AND date(created_at)=?").get(today).c;
   const monthImages    = db.prepare("SELECT COUNT(*) as c FROM usage_log WHERE action='image_generate' AND strftime('%Y-%m',created_at)=?").get(thisMonth).c;
   const todayCompiles  = db.prepare("SELECT COUNT(*) as c FROM usage_log WHERE action='book_compile' AND date(created_at)=?").get(today).c;
+  const monthCompiles  = db.prepare("SELECT COUNT(*) as c FROM usage_log WHERE action='book_compile' AND strftime('%Y-%m',created_at)=?").get(thisMonth).c;
   const pendingSync    = db.prepare('SELECT COUNT(*) as c FROM odoo_sync_queue').get().c;
 
   const textConfig  = aiSettings.getActiveProvider('text');
@@ -1590,7 +1600,7 @@ app.get('/api/admin/overview', adminMiddleware, (req, res) => {
     users: userCounts,
     todayStories, monthStories,
     todayImages, monthImages,
-    todayCompiles,
+    todayCompiles, monthCompiles,
     pendingOdooSync: pendingSync,
     odoo: odoo.getStatus(),
     ai: { textProvider: textConfig?.provider, textModel: textConfig?.model, imageProvider: imageConfig?.provider, imageModel: imageConfig?.model },
@@ -1605,7 +1615,10 @@ app.get('/api/admin/users', adminMiddleware, (req, res) => {
   query += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
   params.push(Math.min(parseInt(limit), 100), parseInt(offset));
   const users = db.prepare(query).all(...params);
-  const total = db.prepare('SELECT COUNT(*) as c FROM users').get().c;
+  let countQuery = 'SELECT COUNT(*) as c FROM users';
+  const countParams = [];
+  if (search) { countQuery += ' WHERE email LIKE ? OR display_name LIKE ?'; countParams.push(`%${search}%`, `%${search}%`); }
+  const total = db.prepare(countQuery).get(...countParams).c;
   res.json({ users, total });
 });
 
