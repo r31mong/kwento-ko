@@ -1406,10 +1406,10 @@ async function loadAdminOverview() {
     </div>
     <div class="admin-card">
       <h3>System Status</h3>
-      <p style="font-size:14px;">Odoo Primary: <strong>${data.odoo?.primary || 'unknown'}</strong> | Secondary: <strong>${data.odoo?.secondary || 'unknown'}</strong></p>
-      <p style="font-size:14px;">Active: <strong>${data.odoo?.active || 'none'}</strong> | Failovers: ${data.odoo?.failoverCount || 0}</p>
-      <p style="font-size:14px;margin-top:8px;">Text AI: <strong>${data.ai?.textProvider} / ${data.ai?.textModel}</strong></p>
-      <p style="font-size:14px;">Image AI: <strong>${data.ai?.imageProvider} / ${data.ai?.imageModel}</strong></p>
+      <p style="font-size:14px;">Odoo Primary: <strong>${escapeHtml(data.odoo?.primary || 'unknown')}</strong> | Secondary: <strong>${escapeHtml(data.odoo?.secondary || 'unknown')}</strong></p>
+      <p style="font-size:14px;">Active: <strong>${escapeHtml(data.odoo?.active || 'none')}</strong> | Failovers: ${data.odoo?.failoverCount || 0}</p>
+      <p style="font-size:14px;margin-top:8px;">Text AI: <strong>${escapeHtml(data.ai?.textProvider)} / ${escapeHtml(data.ai?.textModel)}</strong></p>
+      <p style="font-size:14px;">Image AI: <strong>${escapeHtml(data.ai?.imageProvider)} / ${escapeHtml(data.ai?.imageModel)}</strong></p>
     </div>`;
 }
 
@@ -1425,18 +1425,18 @@ async function loadAdminAISettings() {
       ${providers.map(p => `
         <div class="provider-card ${p.is_active ? 'active-provider' : ''}">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-            <strong style="font-family:'Quicksand',sans-serif;">${p.provider.toUpperCase()}</strong>
+            <strong style="font-family:'Quicksand',sans-serif;">${escapeHtml(p.provider).toUpperCase()}</strong>
             ${p.is_active ? '<span class="badge badge-green">ACTIVE</span>' :
-              `<button class="btn-ghost" style="font-size:12px;padding:4px 10px;" onclick="switchProvider('${feature}','${p.provider}')">Set Active</button>`}
+              `<button class="btn-ghost" style="font-size:12px;padding:4px 10px;" onclick="switchProvider('${escapeHtml(feature)}','${escapeHtml(p.provider)}')">Set Active</button>`}
           </div>
-          <p style="font-size:13px;color:#666;">🔑 Key: ${p.api_key_hint || 'Not set'} | 🤖 Model: ${p.model}</p>
+          <p style="font-size:13px;color:#666;">🔑 Key: ${escapeHtml(p.api_key_hint || 'Not set')} | 🤖 Model: ${escapeHtml(p.model)}</p>
           <p style="font-size:13px;color:#666;">
             ${p.last_test_ok === true ? '✅' : p.last_test_ok === false ? '❌' : '⚪'}
-            ${p.last_test_msg || 'Never tested'}
+            ${escapeHtml(p.last_test_msg || 'Never tested')}
           </p>
           <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
-            <button class="copy-btn" onclick="testAIProvider('${feature}','${p.provider}')">▶ Test</button>
-            <button class="copy-btn" onclick="promptUpdateKey('${feature}','${p.provider}')">✏️ Update Key</button>
+            <button class="copy-btn" onclick="testAIProvider('${escapeHtml(feature)}','${escapeHtml(p.provider)}')">▶ Test</button>
+            <button class="copy-btn" onclick="promptUpdateKey('${escapeHtml(feature)}','${escapeHtml(p.provider)}')">✏️ Update Key</button>
           </div>
         </div>`).join('')}
     </div>`;
@@ -1515,7 +1515,7 @@ async function loadAdminPromo() {
       <thead><tr><th>Code</th><th>Discount</th><th>Uses</th><th>Expires</th><th>Actions</th></tr></thead>
       <tbody>
         ${data.codes.map(c => `<tr>
-          <td><strong>${c.code}</strong></td>
+          <td><strong>${escapeHtml(c.code)}</strong></td>
           <td>${c.discount_type === 'percent' ? c.discount_value + '%' : '₱' + c.discount_value} off</td>
           <td>${c.uses_count}${c.max_uses ? '/' + c.max_uses : ''}</td>
           <td style="font-size:12px;">${c.expires_at ? new Date(c.expires_at).toLocaleDateString('en-PH') : 'No expiry'}</td>
