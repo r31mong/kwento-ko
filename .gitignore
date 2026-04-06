@@ -2,3 +2,4 @@
 kwento-ko/.env
 kwento-ko/node_modules/
 kwento-ko/data/*.db
+.worktrees/
