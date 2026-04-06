@@ -1,461 +1,1067 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="light">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Kwento Ko — Create Your Filipino Children's Story</title>
+
+  <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;600;700;800&family=Nunito:wght@400;600;700&family=Quicksand:wght@500;600;700&family=Pacifico&display=swap" rel="stylesheet" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&family=Be+Vietnam+Pro:ital,wght@0,100..900;1,100..900&family=Pacifico&family=Baloo+2:wght@400;600;700;800&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind CDN with Stitch config -->
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "primary":                  "#ac4218",
+            "primary-dim":              "#9c370b",
+            "primary-container":        "#ffad91",
+            "primary-fixed":            "#ffad91",
+            "primary-fixed-dim":        "#ff9974",
+            "on-primary":               "#ffffff",
+            "on-primary-container":     "#702100",
+            "secondary":                "#006f7e",
+            "secondary-dim":            "#00626f",
+            "secondary-container":      "#a1efff",
+            "secondary-fixed":          "#a1efff",
+            "secondary-fixed-dim":      "#58e6ff",
+            "on-secondary":             "#ffffff",
+            "on-secondary-container":   "#005a67",
+            "tertiary":                 "#437000",
+            "tertiary-dim":             "#3a6300",
+            "tertiary-container":       "#c1fd7c",
+            "on-tertiary":              "#ffffff",
+            "on-tertiary-container":    "#396100",
+            "surface":                  "#fffbff",
+            "surface-bright":           "#fffbff",
+            "surface-dim":              "#e8e969",
+            "surface-tint":             "#ac4218",
+            "surface-variant":          "#edee83",
+            "surface-container-lowest": "#ffffff",
+            "surface-container-low":    "#fefdc1",
+            "surface-container":        "#f8f8ae",
+            "surface-container-high":   "#f3f399",
+            "surface-container-highest":"#edee83",
+            "on-surface":               "#3a3a00",
+            "on-surface-variant":       "#676804",
+            "on-background":            "#3a3a00",
+            "background":               "#fffbff",
+            "outline":                  "#848526",
+            "outline-variant":          "#bebe59",
+            "inverse-surface":          "#0f0f00",
+            "inverse-on-surface":       "#a09f78",
+            "inverse-primary":          "#fe7e4f",
+            "error":                    "#b33938",
+            "error-container":          "#f56965",
+            "on-error":                 "#ffffff",
+          },
+          borderRadius: {
+            "DEFAULT": "1rem",
+            "sm":  "0.5rem",
+            "md":  "0.75rem",
+            "lg":  "2rem",
+            "xl":  "3rem",
+            "full":"9999px",
+          },
+          fontFamily: {
+            "headline": ["Plus Jakarta Sans", "sans-serif"],
+            "body":     ["Be Vietnam Pro", "sans-serif"],
+            "label":    ["Plus Jakarta Sans", "sans-serif"],
+            "brand":    ["Pacifico", "cursive"],
+            "fun":      ["Baloo 2", "sans-serif"],
+          },
+          boxShadow: {
+            "whisper":    "0px 20px 40px rgba(58,58,0,0.06)",
+            "whisper-sm": "0px 10px 30px rgba(58,58,0,0.04)",
+            "primary-glow": "0px 10px 20px rgba(172,66,24,0.25)",
+          },
+        },
+      },
+    };
+  </script>
+
+  <!-- PDF / DOCX libraries -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://unpkg.com/docx@8.5.0/build/index.js"></script>
+
   <style>
+    /* ── CSS Variables (mapped to Stitch palette — used by JS-rendered inline styles) ── */
     :root {
-      --sun-yellow: #FFD63A;
-      --coral:      #FF6B6B;
-      --sky:        #4FC3F7;
-      --leaf:       #66BB6A;
-      --deep-blue:  #1A237E;
-      --warm-white: #FFFDE7;
-      --cream:      #FFF8E1;
-      --earth:      #795548;
-      --muted:      #5D4037;
+      --coral:      #ac4218;
+      --coral-dim:  #9c370b;
+      --sun-yellow: #fefdc1;
+      --sky:        #006f7e;
+      --leaf:       #437000;
+      --deep-blue:  #3a3a00;
+      --warm-white: #fffbff;
+      --cream:      #f8f8ae;
+      --earth:      #676804;
+      --muted:      #848526;
     }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Nunito', sans-serif; background: var(--warm-white); color: #333; min-width: 375px; overflow-x: hidden; }
 
-    /* ── Maintenance Ribbon ── */
-    #maintenance-ribbon { display: none; position: sticky; top: 0; z-index: 1000; background: #FFF3CD; border-bottom: 3px solid #FF9800; padding: 8px 16px; font-family: 'Quicksand', sans-serif; font-size: 14px; display: none; align-items: center; gap: 8px; }
-    #maintenance-ribbon button { background: none; border: none; font-size: 18px; cursor: pointer; margin-left: auto; }
+    /* ── Material Symbols ── */
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+      font-family: 'Material Symbols Outlined', sans-serif;
+    }
 
-    /* ── Header ── */
-    #app-header { background: var(--deep-blue); padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; }
-    .logo { font-family: 'Pacifico', cursive; color: var(--sun-yellow); font-size: 26px; text-decoration: none; }
-    .logo-sunburst { display: inline-block; position: relative; }
-    .logo-sunburst::before { content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 60px; height: 60px; background: radial-gradient(circle, rgba(255,214,58,0.3) 0%, transparent 70%); border-radius: 50%; z-index: -1; }
-    #user-nav { display: flex; align-items: center; gap: 12px; font-family: 'Quicksand', sans-serif; }
-    #user-nav button { background: var(--coral); color: white; border: none; border-radius: 20px; padding: 7px 18px; font-family: 'Quicksand', sans-serif; font-weight: 600; cursor: pointer; font-size: 14px; }
-    #user-nav .btn-ghost { background: transparent; border: 2px solid var(--sun-yellow); color: var(--sun-yellow); }
-    #user-avatar { font-size: 24px; cursor: pointer; }
-    #user-menu { position: relative; }
-    #user-dropdown { display: none; position: absolute; right: 0; top: 40px; background: white; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.15); padding: 8px 0; min-width: 200px; z-index: 100; }
-    #user-dropdown.open { display: block; }
-    #user-dropdown a, #user-dropdown button { display: block; width: 100%; text-align: left; padding: 10px 16px; text-decoration: none; color: #333; background: none; border: none; font-family: 'Quicksand', sans-serif; font-size: 14px; cursor: pointer; }
-    #user-dropdown a:hover, #user-dropdown button:hover { background: var(--cream); }
+    /* ── Base ── */
+    * { box-sizing: border-box; }
+    body { font-family: 'Be Vietnam Pro', sans-serif; min-width: 375px; }
+    h1,h2,h3,h4,h5 { font-family: 'Plus Jakarta Sans', sans-serif; }
 
-    /* ── Auth Modal ── */
-    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 500; align-items: center; justify-content: center; }
-    .modal-overlay.open { display: flex; }
-    .modal { background: white; border-radius: 20px; padding: 32px; max-width: 420px; width: 90%; }
-    .modal h2 { font-family: 'Baloo 2', sans-serif; color: var(--deep-blue); margin-bottom: 20px; }
-    .modal input { width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 12px; font-family: 'Nunito', sans-serif; font-size: 16px; margin-bottom: 12px; }
-    .modal input:focus { outline: none; border-color: var(--coral); }
-    .modal .btn-primary { width: 100%; padding: 14px; background: var(--coral); color: white; border: none; border-radius: 20px; font-family: 'Quicksand', sans-serif; font-weight: 700; font-size: 16px; cursor: pointer; }
-    .modal .btn-primary:hover { background: #e55a5a; }
-    .modal .toggle-link { text-align: center; margin-top: 12px; font-size: 14px; }
-    .modal .toggle-link a { color: var(--coral); cursor: pointer; text-decoration: none; font-weight: 600; }
-    .modal .error-msg { color: #e53e3e; font-size: 14px; margin-bottom: 8px; }
+    /* ── Floating animation (loading + login) ── */
+    .floating-emoji { font-size: 40px; animation: float-up 2s ease-in-out infinite; }
+    .floating-emoji:nth-child(2) { animation-delay: 0.35s; }
+    .floating-emoji:nth-child(3) { animation-delay: 0.7s; }
+    @keyframes float-up { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-14px)} }
+    .floating-icon { animation: float-up 6s ease-in-out infinite; }
 
-    /* ── Progress Bar (Wizard) ── */
-    #wizard-progress { display: flex; align-items: center; justify-content: center; padding: 20px; gap: 0; background: white; border-bottom: 1px solid #f0f0f0; }
-    .step-circle { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Quicksand', sans-serif; font-weight: 700; font-size: 14px; background: #e0e0e0; color: #999; }
-    .step-circle.active { background: var(--coral); color: white; }
-    .step-circle.done { background: var(--leaf); color: white; }
-    .step-label { font-family: 'Quicksand', sans-serif; font-size: 12px; color: #999; margin: 0 4px; white-space: nowrap; }
-    .step-label.active { color: var(--coral); font-weight: 600; }
-    .step-connector { width: 40px; height: 2px; background: #e0e0e0; }
-    .step-connector.done { background: var(--leaf); }
-    @media (max-width: 480px) { .step-label { display: none; } .step-connector { width: 24px; } }
-
-    /* ── Wizard Views ── */
-    .wizard-view { display: none; padding: 20px; max-width: 680px; margin: 0 auto; }
+    /* ── Wizard views ── */
+    .wizard-view { display: none; }
     .wizard-view.active { display: block; }
-    .section-header { background: var(--deep-blue); color: white; padding: 12px 20px; border-radius: 12px; margin-bottom: 20px; font-family: 'Baloo 2', sans-serif; font-size: 20px; position: relative; overflow: hidden; }
-    .section-header::after { content: '◆'; position: absolute; right: 16px; top: 50%; transform: translateY(-50%); opacity: 0.3; font-size: 24px; }
 
-    /* ── Cards & Pills ── */
-    .card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
-    @media (max-width: 480px) { .card-grid { grid-template-columns: 1fr; } }
-    .choice-card { border: 2px solid #e0e0e0; border-radius: 16px; padding: 16px; text-align: center; cursor: pointer; transition: all 0.2s; font-family: 'Quicksand', sans-serif; }
-    .choice-card:hover { border-color: var(--coral); background: var(--cream); }
-    .choice-card.selected { border-color: var(--coral); background: var(--cream); }
-    .choice-card .emoji { font-size: 32px; display: block; margin-bottom: 6px; }
-    .choice-card .label { font-weight: 700; font-size: 14px; color: var(--deep-blue); }
-    .choice-card .sublabel { font-size: 12px; color: #999; }
-    .pills { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
-    .pill { border: 2px solid #e0e0e0; border-radius: 20px; padding: 7px 16px; font-family: 'Quicksand', sans-serif; font-weight: 600; font-size: 13px; cursor: pointer; transition: all 0.2s; background: white; }
-    .pill:hover { border-color: var(--coral); }
-    .pill.selected { background: var(--coral); color: white; border-color: var(--coral); }
-    .pill.selected-teal { background: #006f7e; color: white; border-color: #006f7e; }
-    label.field-label { display: block; font-family: 'Quicksand', sans-serif; font-weight: 600; color: var(--deep-blue); margin-bottom: 6px; margin-top: 16px; }
-    input[type="text"], textarea, select { width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 12px; font-family: 'Nunito', sans-serif; font-size: 15px; }
-    input[type="text"]:focus, textarea:focus, select:focus { outline: none; border-color: var(--coral); }
-    textarea { min-height: 80px; resize: vertical; }
+    /* ── Step dot states (controlled by JS) ── */
+    .step-dot { width: 2.5rem; height: 2.5rem; border-radius: 9999px; display: flex; align-items: center; justify-content: center; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 14px; background: #f3f399; color: #676804; transition: all 0.3s; }
+    .step-dot.active { background: #ac4218; color: #fff; box-shadow: 0 4px 12px rgba(172,66,24,0.35); }
+    .step-dot.done { background: #437000; color: #fff; }
+    .step-lbl { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #676804; margin-top: 6px; }
+    .step-lbl.active { color: #ac4218; }
 
-    /* ── Buttons ── */
-    .btn-primary { background: var(--coral); color: white; border: none; border-radius: 20px; padding: 12px 28px; font-family: 'Quicksand', sans-serif; font-weight: 700; font-size: 15px; cursor: pointer; transition: all 0.2s; }
-    .btn-primary:hover { background: #e55a5a; transform: translateY(-1px); }
-    .btn-secondary { background: var(--sky); color: var(--deep-blue); border: none; border-radius: 20px; padding: 12px 28px; font-family: 'Quicksand', sans-serif; font-weight: 700; font-size: 15px; cursor: pointer; }
-    .btn-ghost { background: white; color: var(--coral); border: 2px solid var(--coral); border-radius: 20px; padding: 10px 24px; font-family: 'Quicksand', sans-serif; font-weight: 700; font-size: 14px; cursor: pointer; }
-    .btn-row { display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px; flex-wrap: wrap; }
+    /* ── Choice cards ── */
+    .choice-card { border: 2px solid transparent; border-radius: 1rem; padding: 14px; text-align: center; cursor: pointer; transition: all 0.2s; background: #ffffff; box-shadow: 0px 4px 12px rgba(58,58,0,0.04); }
+    .choice-card:hover { background: #fefdc1; border-color: rgba(172,66,24,0.3); }
+    .choice-card.selected { background: #fefdc1; border-color: #ac4218; box-shadow: 0 0 0 3px rgba(172,66,24,0.12); }
+    .choice-card .emoji { font-size: 28px; display: block; margin-bottom: 6px; }
+    .choice-card .label { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 13px; color: #3a3a00; }
+    .choice-card .sublabel { font-size: 11px; color: #676804; margin-top: 2px; }
 
-    /* ── Character Preview Card ── */
-    #character-preview { background: linear-gradient(135deg, var(--cream), white); border: 2px solid var(--sun-yellow); border-radius: 20px; padding: 20px; margin-top: 20px; }
-    #character-preview h3 { font-family: 'Baloo 2', sans-serif; color: var(--deep-blue); font-size: 20px; }
-    .stat-bar-wrap { margin: 4px 0; }
-    .stat-bar-wrap .stat-label { font-family: 'Quicksand', sans-serif; font-size: 12px; color: #666; display: flex; justify-content: space-between; }
-    .stat-bar { height: 8px; background: #e0e0e0; border-radius: 4px; overflow: hidden; margin-top: 2px; }
-    .stat-bar-fill { height: 100%; background: var(--coral); border-radius: 4px; transition: width 0.5s; }
-    .catchphrase-bubble { background: var(--sun-yellow); border-radius: 12px; padding: 10px 16px; margin: 10px 0; font-family: 'Baloo 2', sans-serif; font-style: italic; position: relative; }
+    /* ── Pills ── */
+    .pill { border: 1.5px solid #bebe59; border-radius: 9999px; padding: 7px 18px; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 600; font-size: 13px; cursor: pointer; transition: all 0.18s; background: #ffffff; color: #3a3a00; }
+    .pill:hover { background: #fefdc1; border-color: #ac4218; color: #ac4218; }
+    .pill.selected { background: #ac4218; color: #fff; border-color: #ac4218; }
+    .pill.selected-teal { background: #006f7e; color: #fff; border-color: #006f7e; }
+    .pill.selected:hover { background: #9c370b; }
 
-    /* ── Loading Animation ── */
-    #loading-overlay { display: none; position: fixed; inset: 0; background: rgba(255,248,225,0.95); z-index: 400; flex-direction: column; align-items: center; justify-content: center; }
-    #loading-overlay.active { display: flex; }
-    .floating-emoji { font-size: 48px; animation: float 2s ease-in-out infinite; margin: 8px; }
-    .floating-emoji:nth-child(2) { animation-delay: 0.3s; }
-    .floating-emoji:nth-child(3) { animation-delay: 0.6s; }
-    @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-16px); } }
-    #loading-message { font-family: 'Baloo 2', sans-serif; color: var(--deep-blue); font-size: 20px; margin-top: 20px; text-align: center; }
-    #loading-progress { width: 280px; height: 10px; background: #e0e0e0; border-radius: 5px; margin-top: 16px; overflow: hidden; }
-    #loading-progress-fill { height: 100%; background: var(--coral); border-radius: 5px; transition: width 0.5s; width: 0%; }
-
-    /* ── Step 4 Tabs ── */
-    #tab-bar { display: flex; border-bottom: 2px solid #e0e0e0; background: white; overflow-x: auto; }
-    .tab-btn { padding: 12px 18px; font-family: 'Quicksand', sans-serif; font-weight: 600; font-size: 14px; border: none; background: none; cursor: pointer; color: #999; white-space: nowrap; border-bottom: 3px solid transparent; margin-bottom: -2px; }
-    .tab-btn.active { color: var(--coral); border-bottom-color: var(--coral); }
-    .tab-panel { display: none; padding: 20px; max-width: 780px; margin: 0 auto; }
+    /* ── Tabs (Step 4 + Admin) ── */
+    .tab-btn { padding: 10px 16px; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 600; font-size: 13px; border: none; background: none; cursor: pointer; color: #676804; white-space: nowrap; border-bottom: 3px solid transparent; margin-bottom: -2px; transition: all 0.18s; }
+    .tab-btn:hover { color: #ac4218; }
+    .tab-btn.active { color: #ac4218; border-bottom-color: #ac4218; }
+    .tab-panel { display: none; padding: 20px; max-width: 800px; margin: 0 auto; }
     .tab-panel.active { display: block; }
 
-    /* ── Story Page Card ── */
-    .story-page-card { border: 2px solid #f0f0f0; border-radius: 16px; padding: 20px; margin-bottom: 16px; background: white; }
-    .page-number-badge { background: var(--coral); color: white; border-radius: 50%; width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; font-family: 'Quicksand', sans-serif; font-weight: 700; font-size: 14px; margin-bottom: 10px; }
-    .story-text { font-size: 17px; line-height: 1.7; margin-bottom: 10px; }
-    .translation-text { color: #666; font-style: italic; font-size: 14px; border-left: 3px solid var(--sky); padding-left: 10px; margin-bottom: 10px; }
-    .cause-effect-box { background: #FFF3CD; border-left: 4px solid #FF9800; padding: 10px 14px; border-radius: 0 8px 8px 0; margin: 10px 0; font-size: 14px; }
-    .illus-idea { background: var(--cream); border-radius: 8px; padding: 8px 12px; font-size: 13px; color: #666; margin: 8px 0; }
-    .page-actions { display: flex; gap: 8px; margin-top: 12px; }
+    /* ── Admin nav pills ── */
+    #admin-nav .pill { background: transparent; color: #676804; border-color: transparent; }
+    #admin-nav .pill:hover { background: #fefdc1; color: #ac4218; border-color: transparent; }
+    #admin-nav .pill.selected { background: rgba(172,66,24,0.1); color: #ac4218; border-color: transparent; }
 
-    /* ── Image Prompt Card ── */
-    .prompt-card { border: 2px solid #e0e0e0; border-radius: 16px; padding: 16px; margin-bottom: 12px; background: white; }
-    .prompt-text { font-size: 13px; color: #555; font-family: 'Nunito', sans-serif; white-space: pre-wrap; word-break: break-word; }
-    .prompt-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
-    .copy-btn { background: var(--sky); color: var(--deep-blue); border: none; border-radius: 12px; padding: 6px 14px; font-family: 'Quicksand', sans-serif; font-weight: 600; font-size: 13px; cursor: pointer; }
-    .copy-btn:active { opacity: 0.7; }
+    /* ── Admin sections ── */
+    .admin-section { display: none; }
+    .admin-section:first-of-type { display: block; }
 
-    /* ── Character Card ── */
-    #character-card-print { background: linear-gradient(135deg, var(--cream), white); border: 3px solid var(--sun-yellow); border-radius: 20px; padding: 24px; max-width: 400px; margin: 0 auto; }
+    /* ── Cards rendered by JS ── */
+    .admin-card { background: #ffffff; border-radius: 1rem; padding: 20px; margin-bottom: 16px; box-shadow: 0px 10px 30px rgba(58,58,0,0.04); }
+    .admin-card h3 { font-family: 'Plus Jakarta Sans', sans-serif; color: #3a3a00; margin-bottom: 12px; font-size: 18px; font-weight: 700; }
+    .stat-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(120px,1fr)); gap: 10px; }
+    .stat-item { background: #fefdc1; border-radius: 0.75rem; padding: 14px; text-align: center; }
+    .stat-item .number { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 26px; font-weight: 800; color: #ac4218; }
+    .stat-item .label { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 11px; color: #676804; margin-top: 2px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
 
-    /* ── Library ── */
-    .library-card { border: 2px solid #f0f0f0; border-radius: 16px; padding: 16px; margin-bottom: 12px; background: white; display: flex; align-items: flex-start; gap: 16px; }
-    .library-card .story-emoji { font-size: 36px; }
-    .library-card h4 { font-family: 'Baloo 2', sans-serif; color: var(--deep-blue); margin-bottom: 4px; }
-    .library-card .meta { font-size: 12px; color: #999; font-family: 'Quicksand', sans-serif; }
-    .badge { display: inline-block; padding: 2px 10px; border-radius: 10px; font-family: 'Quicksand', sans-serif; font-size: 12px; font-weight: 600; margin-right: 4px; }
-    .badge-blue { background: #e3f2fd; color: #1565c0; }
-    .badge-green { background: #e8f5e9; color: #2e7d32; }
-    .badge-coral { background: #fce4ec; color: #c62828; }
+    .provider-card { border: 2px solid #bebe59; border-radius: 1rem; padding: 16px; margin-bottom: 12px; background: #ffffff; }
+    .provider-card.active-provider { border-color: #437000; background: #f0fdf0; }
 
-    /* ── Upgrade Banner ── */
-    .upgrade-banner { background: linear-gradient(135deg, var(--deep-blue), #3949ab); color: white; border-radius: 16px; padding: 20px; text-align: center; margin: 20px 0; }
-    .upgrade-banner h3 { font-family: 'Baloo 2', sans-serif; font-size: 20px; margin-bottom: 8px; }
+    .stat-bar-wrap { margin: 6px 0; }
+    .stat-bar-wrap .stat-label { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 12px; color: #676804; display: flex; justify-content: space-between; font-weight: 600; }
+    .stat-bar { height: 6px; background: #f3f399; border-radius: 9999px; overflow: hidden; margin-top: 4px; }
+    .stat-bar-fill { height: 100%; background: #ac4218; border-radius: 9999px; transition: width 0.5s; }
+
+    .catchphrase-bubble { background: #fefdc1; border-radius: 1rem; padding: 12px 16px; margin: 10px 0; font-family: 'Baloo 2', sans-serif; font-style: italic; font-size: 15px; color: #3a3a00; border-left: 4px solid #ac4218; }
+
+    /* ── Story page cards (rendered by JS) ── */
+    .story-page-card { border-radius: 1rem; padding: 20px; margin-bottom: 14px; background: #ffffff; box-shadow: 0px 8px 20px rgba(58,58,0,0.04); }
+    .page-number-badge { background: #ac4218; color: #fff; border-radius: 9999px; width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 13px; margin-bottom: 10px; }
+    .story-text { font-size: 17px; line-height: 1.75; margin-bottom: 10px; color: #3a3a00; font-family: 'Be Vietnam Pro', sans-serif; }
+    .translation-text { color: #676804; font-style: italic; font-size: 14px; border-left: 3px solid #006f7e; padding-left: 10px; margin-bottom: 10px; }
+    .cause-effect-box { background: #fefdc1; border-left: 4px solid #ac4218; padding: 10px 14px; border-radius: 0 0.75rem 0.75rem 0; margin: 10px 0; font-size: 14px; color: #3a3a00; }
+    .illus-idea { background: #f8f8ae; border-radius: 0.75rem; padding: 8px 12px; font-size: 13px; color: #676804; margin: 8px 0; }
+    .page-actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+
+    /* ── Prompt cards ── */
+    .prompt-card { border: 1.5px solid #bebe59; border-radius: 1rem; padding: 16px; margin-bottom: 12px; background: #ffffff; }
+    .prompt-text { font-size: 13px; color: #676804; font-family: 'Be Vietnam Pro', sans-serif; white-space: pre-wrap; word-break: break-word; line-height: 1.6; }
+    .prompt-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; align-items: center; }
+
+    /* ── Upgrade banner ── */
+    .upgrade-banner { background: linear-gradient(135deg, #3a3a00, #676804); color: #fffbff; border-radius: 1rem; padding: 20px; text-align: center; margin: 20px 0; }
+    .upgrade-banner h3 { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 18px; margin-bottom: 8px; font-weight: 700; }
     .upgrade-banner p { font-size: 14px; opacity: 0.9; margin-bottom: 14px; }
-    .upgrade-banner button { background: var(--sun-yellow); color: var(--deep-blue); border: none; border-radius: 20px; padding: 10px 24px; font-family: 'Quicksand', sans-serif; font-weight: 700; cursor: pointer; }
+    .upgrade-banner button { background: #ac4218; color: #fff; border: none; border-radius: 9999px; padding: 10px 24px; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; cursor: pointer; font-size: 14px; box-shadow: 0 4px 12px rgba(172,66,24,0.3); }
 
-    /* ── Footer ── */
-    #app-footer { background: var(--deep-blue); color: rgba(255,255,255,0.7); text-align: center; padding: 16px; font-family: 'Quicksand', sans-serif; font-size: 13px; margin-top: 40px; }
+    /* ── Library cards ── */
+    .library-card { border-radius: 1rem; padding: 16px; margin-bottom: 12px; background: #ffffff; display: flex; align-items: flex-start; gap: 16px; box-shadow: 0px 4px 12px rgba(58,58,0,0.04); }
+    .library-card .story-emoji { font-size: 32px; }
+    .library-card h4 { font-family: 'Plus Jakarta Sans', sans-serif; color: #3a3a00; margin-bottom: 4px; font-weight: 700; }
+    .library-card .meta { font-size: 12px; color: #676804; font-family: 'Plus Jakarta Sans', sans-serif; margin-top: 4px; }
 
-    /* ── Admin ── */
-    #admin-view { display: none; }
-    #admin-view.active { display: block; }
-    .admin-card { background: white; border-radius: 16px; padding: 20px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
-    .admin-card h3 { font-family: 'Baloo 2', sans-serif; color: var(--deep-blue); margin-bottom: 12px; }
-    .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
-    .stat-item { background: var(--cream); border-radius: 12px; padding: 14px; text-align: center; }
-    .stat-item .number { font-family: 'Baloo 2', sans-serif; font-size: 28px; color: var(--coral); }
-    .stat-item .label { font-family: 'Quicksand', sans-serif; font-size: 12px; color: #666; margin-top: 4px; }
-    .provider-card { border: 3px solid #e0e0e0; border-radius: 16px; padding: 16px; margin-bottom: 12px; }
-    .provider-card.active-provider { border-color: var(--leaf); }
-    table { width: 100%; border-collapse: collapse; font-size: 14px; }
-    th { background: var(--cream); padding: 10px; text-align: left; font-family: 'Quicksand', sans-serif; font-weight: 600; }
-    td { padding: 10px; border-bottom: 1px solid #f0f0f0; }
+    /* ── Badges ── */
+    .badge { display: inline-block; padding: 2px 10px; border-radius: 9999px; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 11px; font-weight: 700; margin-right: 4px; text-transform: uppercase; letter-spacing: 0.04em; }
+    .badge-blue   { background: #a1efff; color: #005a67; }
+    .badge-green  { background: #c1fd7c; color: #396100; }
+    .badge-coral  { background: #ffad91; color: #702100; }
+
+    /* ── Buttons (for JS-rendered HTML) ── */
+    .btn-primary { background: #ac4218; color: #fff; border: none; border-radius: 9999px; padding: 11px 28px; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 14px; cursor: pointer; transition: all 0.18s; box-shadow: 0px 8px 16px rgba(172,66,24,0.25); }
+    .btn-primary:hover { background: #9c370b; transform: translateY(-1px); }
+    .btn-primary:active { transform: scale(0.97); }
+    .btn-secondary { background: #a1efff; color: #005a67; border: none; border-radius: 9999px; padding: 11px 28px; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 14px; cursor: pointer; }
+    .btn-ghost { background: transparent; color: #ac4218; border: 1.5px solid #ac4218; border-radius: 9999px; padding: 9px 22px; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 13px; cursor: pointer; transition: all 0.18s; }
+    .btn-ghost:hover { background: rgba(172,66,24,0.07); }
+    .btn-row { display: flex; gap: 10px; justify-content: flex-end; margin-top: 24px; flex-wrap: wrap; }
+    .copy-btn { background: #a1efff; color: #005a67; border: none; border-radius: 0.75rem; padding: 6px 14px; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 600; font-size: 12px; cursor: pointer; transition: all 0.15s; }
+    .copy-btn:active { opacity: 0.7; }
+    .copy-btn:hover { background: #58e6ff; }
+
+    /* ── Field labels ── */
+    label.field-label { display: block; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #676804; margin-bottom: 8px; margin-top: 18px; }
+    input[type="text"], input[type="email"], input[type="password"], input[type="number"], textarea, select {
+      width: 100%; padding: 12px 18px; border: none; border-radius: 9999px;
+      background: #edee83; font-family: 'Be Vietnam Pro', sans-serif; font-size: 15px;
+      color: #3a3a00; transition: all 0.18s; outline: none;
+    }
+    textarea { border-radius: 1rem; min-height: 80px; resize: vertical; }
+    select { border-radius: 1rem; }
+    input:focus, textarea:focus, select:focus { ring: 2px; box-shadow: 0 0 0 2px #ac4218; background: #f3f399; }
+
+    /* ── Section header ── */
+    .section-header { background: #fefdc1; color: #3a3a00; padding: 14px 20px; border-radius: 1rem; margin-bottom: 20px; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 18px; font-weight: 800; border-left: 4px solid #ac4218; }
+
+    /* ── Character preview card ── */
+    #character-preview { background: #ffffff; border-radius: 1rem; padding: 20px; margin-top: 20px; box-shadow: 0px 10px 30px rgba(58,58,0,0.06); }
+    #character-preview h3 { font-family: 'Plus Jakarta Sans', sans-serif; color: #3a3a00; font-size: 22px; font-weight: 800; }
+
+    /* ── Card grid ── */
+    .card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+    @media(max-width:480px) { .card-grid { grid-template-columns: 1fr; } }
+    .pills { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+
+    /* ── Table ── */
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { background: #fefdc1; padding: 10px 12px; text-align: left; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: #676804; }
+    td { padding: 10px 12px; border-bottom: 1px solid #f3f399; color: #3a3a00; }
+
+    /* ── Loading overlay ── */
+    #loading-overlay { display: none; position: fixed; inset: 0; background: rgba(255,251,255,0.96); z-index: 400; flex-direction: column; align-items: center; justify-content: center; backdrop-filter: blur(8px); }
+    #loading-overlay.active { display: flex; }
+    #loading-message { font-family: 'Baloo 2', sans-serif; color: #3a3a00; font-size: 20px; font-weight: 700; margin-top: 24px; text-align: center; }
+    #loading-progress { width: 280px; height: 6px; background: #f3f399; border-radius: 9999px; margin-top: 16px; overflow: hidden; }
+    #loading-progress-fill { height: 100%; background: #ac4218; border-radius: 9999px; transition: width 0.5s; width: 0%; }
+
+    /* ── User dropdown ── */
+    #user-dropdown { display: none; position: absolute; right: 0; top: 44px; background: #fff; border-radius: 1rem; box-shadow: 0px 20px 40px rgba(58,58,0,0.12); padding: 8px 0; min-width: 200px; z-index: 100; border: 1px solid rgba(190,190,89,0.3); }
+    #user-dropdown.open { display: block; }
+    #user-dropdown a, #user-dropdown button { display: block; width: 100%; text-align: left; padding: 10px 18px; text-decoration: none; color: #3a3a00; background: none; border: none; font-family: 'Be Vietnam Pro', sans-serif; font-size: 14px; cursor: pointer; }
+    #user-dropdown a:hover, #user-dropdown button:hover { background: #fefdc1; }
+
+    /* ── Auth modal ── */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(10,10,0,0.55); z-index: 500; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
+    .modal-overlay.open { display: flex; }
+
+    /* ── Compile modal inner ── */
+    #compile-inner { background: #fffbff; border-radius: 1.5rem; padding: 28px; max-width: 520px; width: 90%; max-height: 90vh; overflow-y: auto; }
+    #compile-inner h2 { font-family: 'Plus Jakarta Sans', sans-serif; color: #3a3a00; font-weight: 800; font-size: 20px; margin-bottom: 18px; }
+
+    /* ── Maintenance ribbon ── */
+    #maintenance-ribbon { display: none; position: sticky; top: 0; z-index: 1000; background: #fefdc1; border-bottom: 2px solid #ac4218; padding: 8px 20px; font-family: 'Be Vietnam Pro', sans-serif; font-size: 14px; align-items: center; gap: 8px; }
+    #maintenance-ribbon button { background: none; border: none; font-size: 18px; cursor: pointer; margin-left: auto; color: #3a3a00; }
+
+    /* ── Export dropdown ── */
+    #export-menu { display: none; position: absolute; right: 0; top: 44px; background: #fff; border-radius: 1rem; box-shadow: 0px 20px 40px rgba(58,58,0,0.12); padding: 8px 0; min-width: 190px; z-index: 50; border: 1px solid rgba(190,190,89,0.3); }
+    #export-menu button { display: block; width: 100%; text-align: left; padding: 10px 18px; border: none; background: none; cursor: pointer; font-family: 'Be Vietnam Pro', sans-serif; font-size: 14px; color: #3a3a00; }
+    #export-menu button:hover { background: #fefdc1; }
+
+    /* ── Print ── */
+    @media print {
+      #app-header, #wizard-progress, #tab-bar, .page-actions, #compile-cta, #app-footer { display: none !important; }
+      .tab-panel { display: block !important; }
+    }
+
+    /* ── Responsive helpers ── */
+    @media(max-width:480px) {
+      .step-lbl { display: none; }
+    }
   </style>
 </head>
-<body>
+<body class="bg-surface font-body text-on-surface antialiased overflow-x-hidden">
 
-<!-- Maintenance Ribbon -->
+<!-- ── Maintenance Ribbon ── -->
 <div id="maintenance-ribbon">
-  <span>⚠️</span>
-  <span id="maintenance-msg">Kwento Ko is experiencing service issues. Full access available until <span id="maintenance-until-text"></span>. We are working to restore service.</span>
-  <button onclick="this.parentElement.style.display='none'">✕</button>
+  <span class="material-symbols-outlined text-primary text-xl">warning</span>
+  <span id="maintenance-msg">Kwento Ko is experiencing service issues. Full access available until <span id="maintenance-until-text"></span>.</span>
+  <button onclick="this.parentElement.style.display='none'" class="ml-auto text-on-surface-variant hover:text-on-surface">✕</button>
 </div>
 
-<!-- Header -->
-<header id="app-header">
-  <a href="/" class="logo logo-sunburst">Kwento Ko</a>
-  <nav id="user-nav">
-    <span id="nav-guest" style="display:flex;gap:8px;">
-      <button class="btn-ghost" onclick="openModal('login')">Log In</button>
-      <button onclick="openModal('register')">Get Started Free</button>
-    </span>
-    <span id="nav-user" style="display:none;align-items:center;gap:10px;">
-      <div id="user-menu">
-        <span id="user-avatar" onclick="toggleDropdown()">📚</span>
-        <span id="user-display-name" style="color:white;font-family:'Quicksand',sans-serif;font-size:14px;cursor:pointer;" onclick="toggleDropdown()"></span>
-        <div id="user-dropdown">
-          <a href="#" onclick="showLibrary();return false;">📚 My Library</a>
-          <a href="#" onclick="showReferral();return false;">🎁 Refer Friends</a>
-          <hr style="border:none;border-top:1px solid #f0f0f0;margin:4px 0;">
-          <button onclick="logout()">Sign Out</button>
+<!-- ── Header ── -->
+<header id="app-header" class="bg-white/80 backdrop-blur-md shadow-whisper fixed top-0 w-full z-50">
+  <div class="flex justify-between items-center px-5 py-3.5 max-w-7xl mx-auto">
+    <!-- Logo -->
+    <a href="/" class="flex items-center gap-2 no-underline">
+      <span class="material-symbols-outlined text-primary text-3xl" style="font-variation-settings:'FILL' 1,'wght' 600,'GRAD' 0,'opsz' 24;">auto_stories</span>
+      <span class="font-brand text-2xl text-primary">Kwento Ko</span>
+    </a>
+    <!-- Nav -->
+    <nav id="user-nav" class="flex items-center gap-3">
+      <span id="nav-guest" class="flex gap-2">
+        <button class="btn-ghost text-sm py-2 px-5" onclick="openModal('login')">Log In</button>
+        <button class="btn-primary text-sm py-2.5 px-5" onclick="openModal('register')">Get Started Free</button>
+      </span>
+      <span id="nav-user" style="display:none;" class="flex items-center gap-3">
+        <div id="user-menu" class="relative">
+          <button onclick="toggleDropdown()" class="flex items-center gap-2 rounded-full bg-surface-container-low px-4 py-2 hover:bg-surface-container transition-colors">
+            <span id="user-avatar" class="text-xl">📚</span>
+            <span id="user-display-name" class="font-label font-semibold text-sm text-on-surface"></span>
+            <span class="material-symbols-outlined text-on-surface-variant text-base">expand_more</span>
+          </button>
+          <div id="user-dropdown">
+            <a href="#" onclick="showLibrary();return false;">📚 My Library</a>
+            <a href="#" onclick="showReferral();return false;">🎁 Refer Friends</a>
+            <hr style="border:none;border-top:1px solid #f3f399;margin:4px 0;">
+            <button onclick="logout()">Sign Out</button>
+          </div>
         </div>
-      </div>
-    </span>
-  </nav>
+      </span>
+    </nav>
+  </div>
 </header>
 
-<!-- Loading Overlay -->
+<!-- ── Loading Overlay ── -->
 <div id="loading-overlay">
-  <div style="display:flex;">
+  <div class="flex gap-4 mb-2">
     <span class="floating-emoji">✍️</span>
     <span class="floating-emoji">📖</span>
     <span class="floating-emoji">🌺</span>
   </div>
-  <div id="loading-message">Isinusulat ang kwento...</div>
-  <div id="loading-progress"><div id="loading-progress-fill"></div></div>
+  <div id="loading-message" class="font-fun text-xl font-bold text-on-surface mt-4">Isinusulat ang kwento...</div>
+  <div id="loading-progress" class="mt-4"><div id="loading-progress-fill"></div></div>
 </div>
 
-<!-- Auth Modal -->
-<div class="modal-overlay" id="auth-modal">
-  <div class="modal">
-    <h2 id="modal-title">Welcome to Kwento Ko</h2>
-    <p id="modal-error" class="error-msg" style="display:none;"></p>
-    <div id="register-fields">
-      <input type="text" id="reg-name" placeholder="Your name (e.g. Maria)" />
-    </div>
-    <input type="email" id="auth-email" placeholder="Email address" />
-    <input type="password" id="auth-password" placeholder="Password (min 6 characters)" />
-    <button class="btn-primary" onclick="submitAuth()">
-      <span id="modal-btn-text">Create Free Account</span>
-    </button>
-    <div class="toggle-link">
-      <span id="modal-toggle-text">Already have an account?</span>
-      <a onclick="toggleAuthMode()"> <span id="modal-toggle-link">Log in here</span></a>
-    </div>
-  </div>
-</div>
+<!-- ── Auth Modal ── -->
+<div class="modal-overlay" id="auth-modal" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="flex w-full max-w-3xl rounded-2xl overflow-hidden shadow-[0px_30px_60px_rgba(58,58,0,0.15)] max-h-[90vh]">
 
-<!-- Wizard Progress -->
-<div id="wizard-progress" style="display:none;">
-  <div class="step-circle" id="step-dot-1">①</div>
-  <span class="step-label" id="step-lbl-1">Character</span>
-  <div class="step-connector" id="step-con-1"></div>
-  <div class="step-circle" id="step-dot-2">②</div>
-  <span class="step-label" id="step-lbl-2">Story Setup</span>
-  <div class="step-connector" id="step-con-2"></div>
-  <div class="step-circle" id="step-dot-3">③</div>
-  <span class="step-label" id="step-lbl-3">Generate</span>
-  <div class="step-connector" id="step-con-3"></div>
-  <div class="step-circle" id="step-dot-4">④</div>
-  <span class="step-label" id="step-lbl-4">Your Book</span>
-</div>
-
-<!-- Main App Content (shown after auth check) -->
-<main id="app-main" style="display:none;">
-
-  <!-- Landing / Step 1: Character Builder -->
-  <div class="wizard-view active" id="view-step1">
-    <div class="section-header">① Build Your Character</div>
-
-    <label class="field-label">Character Name *</label>
-    <input type="text" id="char-name" placeholder="e.g. Niko, Luna, Kiko..." oninput="updateCharPreview()" />
-
-    <label class="field-label">Character Type</label>
-    <div class="card-grid" id="char-type-grid">
-      <div class="choice-card selected" data-value="Animal Friend" onclick="selectCard(this,'char-type-grid')"><span class="emoji">🦊</span><span class="label">Animal Friend</span></div>
-      <div class="choice-card" data-value="Filipino Kid" onclick="selectCard(this,'char-type-grid')"><span class="emoji">🧒</span><span class="label">Filipino Kid</span></div>
-      <div class="choice-card" data-value="Fantasy Being" onclick="selectCard(this,'char-type-grid')"><span class="emoji">🧚</span><span class="label">Fantasy Being</span></div>
-      <div class="choice-card" data-value="Custom" onclick="selectCard(this,'char-type-grid');document.getElementById('custom-type-wrap').style.display='block'"><span class="emoji">✏️</span><span class="label">Custom</span></div>
-    </div>
-    <div id="custom-type-wrap" style="display:none;margin-bottom:16px;">
-      <input type="text" id="custom-type" placeholder="Describe your character type..." oninput="updateCharPreview()" />
-    </div>
-
-    <label class="field-label">Personality (pick up to 3)</label>
-    <div class="pills" id="trait-pills">
-      <div class="pill" data-value="Matapang" onclick="togglePill(this,'trait-pills',3)">Matapang (Brave)</div>
-      <div class="pill" data-value="Mausisa" onclick="togglePill(this,'trait-pills',3)">Mausisa (Curious)</div>
-      <div class="pill" data-value="Masaya" onclick="togglePill(this,'trait-pills',3)">Masaya (Cheerful)</div>
-      <div class="pill" data-value="Mahal sa Lahat" onclick="togglePill(this,'trait-pills',3)">Mahal sa Lahat (Loving)</div>
-      <div class="pill" data-value="Matalino" onclick="togglePill(this,'trait-pills',3)">Matalino (Smart)</div>
-      <div class="pill" data-value="Mahiyain" onclick="togglePill(this,'trait-pills',3)">Mahiyain (Shy)</div>
-      <div class="pill" data-value="Palaro" onclick="togglePill(this,'trait-pills',3)">Palaro (Playful)</div>
-      <div class="pill" data-value="Mabait" onclick="togglePill(this,'trait-pills',3)">Mabait (Kind)</div>
-    </div>
-
-    <label class="field-label">Distinctive Feature <span style="color:#999;font-weight:400;">(optional)</span></label>
-    <input type="text" id="char-feature" placeholder="e.g. always wears a red bandana, has a magical tail..." oninput="updateCharPreview()" />
-
-    <!-- Advanced Mode -->
-    <details style="margin-top:16px;">
-      <summary style="cursor:pointer;font-family:'Quicksand',sans-serif;font-weight:600;color:var(--coral);">More Options ▼</summary>
-      <div style="margin-top:12px;">
-        <label class="field-label">Character Age</label>
-        <input type="text" id="char-age" placeholder="e.g. 7 years old, young fox..." />
-        <label class="field-label">Special Ability</label>
-        <input type="text" id="char-ability" placeholder="e.g. can talk to animals..." />
-        <label class="field-label">Supporting Character + Relationship</label>
-        <input type="text" id="char-support" placeholder="e.g. Nanay Rosa (mother), Lolo Ben (grandfather)..." />
+    <!-- Left brand panel (desktop only) -->
+    <div class="hidden lg:flex w-5/12 flex-col justify-center items-center p-10 relative overflow-hidden" style="background:#000033;">
+      <div class="absolute top-8 left-8 text-3xl floating-icon" style="animation-delay:0s;">📖</div>
+      <div class="absolute top-16 right-10 text-3xl floating-icon" style="animation-delay:1.2s;">✨</div>
+      <div class="absolute bottom-20 left-1/4 text-3xl floating-icon" style="animation-delay:2.4s;">🌟</div>
+      <div class="absolute bottom-8 right-8 text-3xl floating-icon" style="animation-delay:3.6s;">🌈</div>
+      <div class="z-10 text-center space-y-5">
+        <h1 class="font-brand text-5xl text-primary drop-shadow-lg">Kwento Ko</h1>
+        <p class="font-headline text-white/90 text-base leading-relaxed max-w-xs mx-auto">Gumawa ng mga mahiwagang kwento para sa iyong mga minamahal.</p>
+        <div class="flex flex-wrap justify-center gap-3 mt-4">
+          <span class="bg-white/10 backdrop-blur-md px-4 py-1.5 rounded-full text-white font-fun text-sm">✓ Free</span>
+          <span class="bg-white/10 backdrop-blur-md px-4 py-1.5 rounded-full text-white font-fun text-sm">✓ Multi-Language</span>
+          <span class="bg-white/10 backdrop-blur-md px-4 py-1.5 rounded-full text-white font-fun text-sm">✓ Print-Ready</span>
+        </div>
       </div>
-    </details>
-
-    <!-- Live Preview -->
-    <div id="character-preview">
-      <h3 id="preview-name">Your Character</h3>
-      <p id="preview-type" style="font-size:13px;color:#999;font-family:'Quicksand',sans-serif;margin-bottom:8px;"></p>
-      <div id="preview-traits"></div>
     </div>
 
-    <div class="btn-row">
-      <button class="btn-primary" onclick="goToStep(2)">Story Setup →</button>
-    </div>
-  </div>
+    <!-- Right form panel -->
+    <div class="flex-1 bg-surface-container-low flex items-center justify-center p-7 overflow-y-auto">
+      <div class="w-full max-w-sm bg-white rounded-xl shadow-whisper p-7 relative">
+        <!-- Mobile brand -->
+        <div class="lg:hidden text-center mb-6">
+          <span class="font-brand text-3xl text-primary">Kwento Ko</span>
+        </div>
 
-  <!-- Step 2: Story Setup -->
-  <div class="wizard-view" id="view-step2">
-    <div class="section-header">② Story Setup</div>
+        <!-- Tab switcher -->
+        <div class="flex justify-center gap-8 mb-8 border-b border-outline-variant/20">
+          <button id="modal-tab-login" class="pb-3 text-base font-headline font-bold text-primary border-b-2 border-primary -mb-px transition-all" onclick="openModal('login')">Login</button>
+          <button id="modal-tab-register" class="pb-3 text-base font-headline text-on-surface-variant hover:text-primary transition-all" onclick="openModal('register')">Register</button>
+        </div>
 
-    <label class="field-label">Story Tone</label>
-    <div class="pills" id="tone-pills">
-      <div class="pill" data-value="Funny" onclick="selectPill(this,'tone-pills')">🤣 Funny</div>
-      <div class="pill selected" data-value="Gentle" onclick="selectPill(this,'tone-pills')">🌿 Gentle</div>
-      <div class="pill" data-value="Adventurous" onclick="selectPill(this,'tone-pills')">🗺️ Adventurous</div>
-      <div class="pill" data-value="Mysterious" onclick="selectPill(this,'tone-pills')">🌙 Mysterious</div>
-      <div class="pill" data-value="Heartwarming" onclick="selectPill(this,'tone-pills')">💛 Heartwarming</div>
-    </div>
+        <p id="modal-error" class="text-error text-sm mb-4 font-semibold" style="display:none;"></p>
 
-    <label class="field-label">Setting</label>
-    <div class="card-grid" id="setting-grid" style="grid-template-columns:repeat(4,1fr);">
-      <div class="choice-card" data-value="City" data-fil="Lungsod" onclick="selectCard(this,'setting-grid')"><span class="emoji">🏙️</span><span class="label">Lungsod</span><span class="sublabel">City</span></div>
-      <div class="choice-card selected" data-value="Province" data-fil="Probinsya" onclick="selectCard(this,'setting-grid')"><span class="emoji">🌾</span><span class="label">Probinsya</span><span class="sublabel">Province</span></div>
-      <div class="choice-card" data-value="Sea" data-fil="Dagat" onclick="selectCard(this,'setting-grid')"><span class="emoji">🌊</span><span class="label">Dagat</span><span class="sublabel">Sea</span></div>
-      <div class="choice-card" data-value="Forest" data-fil="Gubat" onclick="selectCard(this,'setting-grid')"><span class="emoji">🌳</span><span class="label">Gubat</span><span class="sublabel">Forest</span></div>
-      <div class="choice-card" data-value="Home" data-fil="Tahanan" onclick="selectCard(this,'setting-grid')"><span class="emoji">🏡</span><span class="label">Tahanan</span><span class="sublabel">Home</span></div>
-      <div class="choice-card" data-value="School" data-fil="Paaralan" onclick="selectCard(this,'setting-grid')"><span class="emoji">🏫</span><span class="label">Paaralan</span><span class="sublabel">School</span></div>
-      <div class="choice-card" data-value="Magical Place" data-fil="Mahiwagang Lugar" onclick="selectCard(this,'setting-grid')"><span class="emoji">✨</span><span class="label">Mahiwagang</span><span class="sublabel">Magical</span></div>
-      <div class="choice-card" data-value="Custom" data-fil="" onclick="selectCard(this,'setting-grid');document.getElementById('custom-setting-wrap').style.display='block'"><span class="emoji">✏️</span><span class="label">Custom</span></div>
-    </div>
-    <div id="custom-setting-wrap" style="display:none;margin-bottom:16px;">
-      <input type="text" id="custom-setting" placeholder="Describe the setting..." />
-    </div>
+        <!-- Register name field -->
+        <div id="register-fields" class="mb-4">
+          <label class="field-label">Your Name</label>
+          <input type="text" id="reg-name" placeholder="e.g. Maria, Juan..." style="border-radius:9999px;" />
+        </div>
 
-    <label class="field-label">Age Range</label>
-    <div class="pills" id="age-pills">
-      <div class="pill" data-value="2-4" onclick="selectPill(this,'age-pills')">2-4</div>
-      <div class="pill" data-value="3-5" onclick="selectPill(this,'age-pills')">3-5</div>
-      <div class="pill selected" data-value="4-6" onclick="selectPill(this,'age-pills')">4-6</div>
-      <div class="pill" data-value="5-7" onclick="selectPill(this,'age-pills')">5-7</div>
-      <div class="pill" data-value="6-8" onclick="selectPill(this,'age-pills')">6-8</div>
-    </div>
+        <label class="field-label">Email</label>
+        <input type="email" id="auth-email" placeholder="example@kwento.ko" style="border-radius:9999px;margin-bottom:14px;" />
 
-    <label class="field-label">Story Length</label>
-    <div class="pills" id="length-pills">
-      <div class="pill" data-value="6" onclick="selectPill(this,'length-pills')">Short — 6 pages</div>
-      <div class="pill selected" data-value="10" onclick="selectPill(this,'length-pills')">Standard — 10 pages</div>
-      <div class="pill" data-value="14" onclick="selectPill(this,'length-pills')" id="length-14">Long — 14 pages 🔒</div>
-    </div>
+        <label class="field-label">Password</label>
+        <input type="password" id="auth-password" placeholder="••••••••" style="border-radius:9999px;margin-bottom:20px;" />
 
-    <label class="field-label">Values Category</label>
-    <div class="card-grid" id="values-grid" style="grid-template-columns:repeat(3,1fr);">
-      <div class="choice-card selected" data-value="Filipino Family" onclick="selectCard(this,'values-grid');updateLessons()"><span class="emoji">👨‍👩‍👧</span><span class="label">Filipino Family</span></div>
-      <div class="choice-card" data-value="Christian" onclick="selectCard(this,'values-grid');updateLessons()"><span class="emoji">✝️</span><span class="label">Christian</span></div>
-      <div class="choice-card" data-value="Life Lessons" onclick="selectCard(this,'values-grid');updateLessons()"><span class="emoji">💡</span><span class="label">Life Lessons</span></div>
-      <div class="choice-card" data-value="Environment" onclick="selectCard(this,'values-grid');updateLessons()"><span class="emoji">🌿</span><span class="label">Environment</span></div>
-      <div class="choice-card" data-value="Social-Emotional" onclick="selectCard(this,'values-grid');updateLessons()"><span class="emoji">💛</span><span class="label">Social-Emotional</span></div>
-    </div>
+        <button class="btn-primary w-full py-3.5 text-base" onclick="submitAuth()">
+          <span id="modal-btn-text">Create Free Account</span>
+        </button>
 
-    <label class="field-label">Specific Lesson</label>
-    <div class="pills" id="lesson-pills"></div>
-
-    <label class="field-label">Cause &amp; Effect</label>
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
-      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
-        <input type="checkbox" id="cause-effect-toggle" checked style="width:auto;" />
-        <span style="font-family:'Quicksand',sans-serif;font-size:14px;">Show a gentle wrong choice + consequence + resolution</span>
-      </label>
-    </div>
-
-    <label class="field-label">Primary Language</label>
-    <div class="pills" id="lang-pills">
-      <div class="pill selected" data-value="English" onclick="selectPill(this,'lang-pills');updateBilingualState()">English</div>
-      <div class="pill" data-value="Filipino" onclick="selectPill(this,'lang-pills');updateBilingualState()">Filipino</div>
-      <div class="pill" data-value="Cebuano" onclick="selectPill(this,'lang-pills');updateBilingualState()">Cebuano</div>
-      <div class="pill" data-value="Ilocano" onclick="selectPill(this,'lang-pills');updateBilingualState()">Ilocano</div>
-      <div class="pill" data-value="Taglish" onclick="selectPill(this,'lang-pills');updateBilingualState()">Taglish</div>
-    </div>
-
-    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-family:'Quicksand',sans-serif;font-size:14px;margin-bottom:16px;">
-      <input type="checkbox" id="bilingual-toggle" style="width:auto;" />
-      <span>Add English translation on every page (bilingual mode)</span>
-    </label>
-
-    <div class="btn-row">
-      <button class="btn-ghost" onclick="goToStep(1)">← Back</button>
-      <button class="btn-primary" onclick="goToStep(3)">Generate Story →</button>
+        <div class="text-center mt-4 text-sm text-on-surface-variant">
+          <span id="modal-toggle-text">Already have an account?</span>
+          <a class="text-primary font-semibold cursor-pointer hover:underline ml-1" onclick="toggleAuthMode()"><span id="modal-toggle-link">Log in here</span></a>
+        </div>
+      </div>
     </div>
   </div>
+</div>
 
-  <!-- Step 3: Generate -->
-  <div class="wizard-view" id="view-step3">
-    <div class="section-header">③ Your Character Profile</div>
-    <div id="character-profile-result">
-      <p style="text-align:center;color:#999;font-family:'Quicksand',sans-serif;">Generating character profile...</p>
-    </div>
-    <div id="story-gen-section" style="display:none;margin-top:24px;">
-      <div class="section-header">Write My Story</div>
-      <div class="btn-row"><button class="btn-primary" id="write-story-btn" onclick="generateStory()">✨ Write My Story →</button></div>
-    </div>
-  </div>
+<!-- ── Wizard Progress ── -->
+<div id="wizard-progress" class="flex items-start justify-center gap-0 pt-20 pb-4 px-4 bg-surface-container-low/60" style="display:none!important;">
+  <!-- shown via JS — actual display managed by showWizard() -->
+</div>
+<!-- Spacer for fixed header -->
+<div id="header-spacer" class="h-16" style="display:none;"></div>
 
-  <!-- Step 4: Your Book -->
-  <div class="wizard-view" id="view-step4">
-    <!-- Top bar -->
-    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px;">
+<!-- ════════════════════════════════════════════════════════════
+     LANDING PAGE (Guest / Not Logged In)
+════════════════════════════════════════════════════════════ -->
+<div id="view-landing" style="display:none;" class="pt-16 overflow-x-hidden">
+
+  <!-- Hero Section -->
+  <section class="relative overflow-hidden bg-surface min-h-screen flex items-center">
+    <div class="absolute inset-0 pointer-events-none overflow-hidden">
+      <div class="absolute top-16 right-0 w-96 h-96 bg-primary-container/20 rounded-full blur-3xl translate-x-1/2"></div>
+      <div class="absolute bottom-0 left-0 w-80 h-64 bg-surface-container-low rounded-tr-[80px]"></div>
+    </div>
+    <div class="relative max-w-6xl mx-auto px-6 py-20 md:py-28 flex flex-col lg:flex-row items-center gap-16">
+      <!-- Copy -->
+      <div class="flex-1 text-center lg:text-left space-y-7">
+        <div class="inline-flex items-center gap-2 bg-primary-container/25 rounded-full px-4 py-1.5 text-on-primary-container font-label font-bold text-xs uppercase tracking-widest">
+          <span class="material-symbols-outlined text-sm" style="font-variation-settings:'FILL' 1,'wght' 600,'GRAD' 0,'opsz' 20;">auto_stories</span>
+          Filipino Children's Stories
+        </div>
+        <h1 class="font-headline text-5xl md:text-6xl lg:text-7xl font-extrabold text-on-surface tracking-tight leading-[1.1]">
+          Likhain ang<br class="hidden lg:block" />
+          iyong <span class="text-primary">kwento.</span>
+        </h1>
+        <p class="font-body text-xl text-on-surface-variant max-w-lg mx-auto lg:mx-0 leading-relaxed">
+          Gumawa ng personalized Filipino children's books in minutes — powered by AI, rooted in culture.
+        </p>
+        <div class="flex flex-wrap gap-4 justify-center lg:justify-start">
+          <button class="btn-primary text-base px-9 py-4 flex items-center gap-2 text-lg" onclick="openModal('register')">
+            <span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 24;">auto_fix_high</span>
+            Gumawa nang Libre
+          </button>
+          <button class="btn-ghost text-base px-9 py-4 text-lg" onclick="openModal('login')">
+            Mag-Login
+          </button>
+        </div>
+        <div class="flex flex-wrap items-center gap-6 justify-center lg:justify-start pt-1">
+          <span class="text-sm font-label font-semibold text-on-surface-variant">✓ Free to start</span>
+          <span class="text-sm font-label font-semibold text-on-surface-variant">✓ No credit card</span>
+          <span class="text-sm font-label font-semibold text-on-surface-variant">✓ Print-ready PDFs</span>
+        </div>
+      </div>
+      <!-- Book Preview Mockup -->
+      <div class="flex-shrink-0 w-64 md:w-80">
+        <div class="relative">
+          <div class="absolute -inset-6 bg-primary-container/20 rounded-3xl blur-3xl"></div>
+          <div class="relative bg-surface-container-lowest rounded-2xl shadow-whisper p-6 space-y-4">
+            <div class="h-36 bg-gradient-to-br from-primary-container via-surface-container to-secondary-container rounded-xl flex items-center justify-center">
+              <span class="text-6xl">🦊</span>
+            </div>
+            <div>
+              <h3 class="font-headline font-extrabold text-on-surface text-xl">Si Kiko at ang Gubat</h3>
+              <p class="text-on-surface-variant text-sm mt-1.5 leading-relaxed">Isang araw, si Kiko ay natuklasan ang isang nakatagong lambak ng mga engkanto...</p>
+            </div>
+            <div class="flex gap-1.5 flex-wrap">
+              <span class="badge badge-blue">Filipino</span>
+              <span class="badge badge-green">4–6 yrs</span>
+              <span class="badge badge-coral">Heartwarming</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- How It Works -->
+  <section class="bg-surface-container-low/60 py-20 px-6">
+    <div class="max-w-4xl mx-auto">
+      <div class="text-center mb-14">
+        <h2 class="font-headline text-4xl font-extrabold text-on-surface">Tatlong hakbang lang</h2>
+        <p class="text-on-surface-variant mt-3">Mula sa blankong pahina hanggang sa tapos na libro.</p>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-10">
+        <div class="text-center space-y-4">
+          <div class="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center mx-auto shadow-primary-glow">
+            <span class="material-symbols-outlined text-white text-3xl" style="font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 24;">face</span>
+          </div>
+          <h3 class="font-headline font-bold text-xl text-on-surface">Likhain ang Tauhan</h3>
+          <p class="text-on-surface-variant text-sm leading-relaxed">Bigyan ng pangalan, klase, at personalidad ang iyong paboritong karakter.</p>
+        </div>
+        <div class="text-center space-y-4">
+          <div class="w-16 h-16 bg-secondary rounded-2xl flex items-center justify-center mx-auto">
+            <span class="material-symbols-outlined text-white text-3xl" style="font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 24;">tune</span>
+          </div>
+          <h3 class="font-headline font-bold text-xl text-on-surface">I-Setup ang Kwento</h3>
+          <p class="text-on-surface-variant text-sm leading-relaxed">Piliin ang tono, setting, at mga aralin na gusto mong ituro.</p>
+        </div>
+        <div class="text-center space-y-4">
+          <div class="w-16 h-16 bg-tertiary rounded-2xl flex items-center justify-center mx-auto">
+            <span class="material-symbols-outlined text-white text-3xl" style="font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 24;">picture_as_pdf</span>
+          </div>
+          <h3 class="font-headline font-bold text-xl text-on-surface">I-Download ang Libro</h3>
+          <p class="text-on-surface-variant text-sm leading-relaxed">I-compile at i-print ang iyong kwento bilang isang tunay na libro.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features Grid -->
+  <section class="py-20 px-6 bg-surface">
+    <div class="max-w-5xl mx-auto">
+      <div class="text-center mb-14">
+        <h2 class="font-headline text-4xl font-extrabold text-on-surface">Bakit Kwento Ko?</h2>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div class="bg-surface-container-lowest rounded-xl p-6 shadow-whisper-sm">
+          <span class="text-3xl mb-4 block">🌺</span>
+          <h3 class="font-headline font-bold text-on-surface mb-2">Proudly Filipino</h3>
+          <p class="text-on-surface-variant text-sm leading-relaxed">Probinsya, Lungsod, Dagat — buhay ang kultura sa bawat pahina.</p>
+        </div>
+        <div class="bg-surface-container-lowest rounded-xl p-6 shadow-whisper-sm">
+          <span class="text-3xl mb-4 block">🌐</span>
+          <h3 class="font-headline font-bold text-on-surface mb-2">Multi-Language</h3>
+          <p class="text-on-surface-variant text-sm leading-relaxed">Filipino, English, Cebuano, Ilocano, Taglish — o bilingual mode.</p>
+        </div>
+        <div class="bg-surface-container-lowest rounded-xl p-6 shadow-whisper-sm">
+          <span class="text-3xl mb-4 block">📚</span>
+          <h3 class="font-headline font-bold text-on-surface mb-2">Print-Ready PDF</h3>
+          <p class="text-on-surface-variant text-sm leading-relaxed">A5 Booklet, A4, KDP 6×9, Square 8×8 — handa na i-print.</p>
+        </div>
+        <div class="bg-surface-container-lowest rounded-xl p-6 shadow-whisper-sm">
+          <span class="text-3xl mb-4 block">👨‍👩‍👧</span>
+          <h3 class="font-headline font-bold text-on-surface mb-2">Family Values</h3>
+          <p class="text-on-surface-variant text-sm leading-relaxed">Filipino Family, Christian, Life Lessons, Social-Emotional.</p>
+        </div>
+        <div class="bg-surface-container-lowest rounded-xl p-6 shadow-whisper-sm">
+          <span class="text-3xl mb-4 block">🎨</span>
+          <h3 class="font-headline font-bold text-on-surface mb-2">AI Image Prompts</h3>
+          <p class="text-on-surface-variant text-sm leading-relaxed">Bawat pahina ay may detalyadong prompt para sa Canva o DALL-E.</p>
+        </div>
+        <div class="bg-surface-container-lowest rounded-xl p-6 shadow-whisper-sm">
+          <span class="text-3xl mb-4 block">💛</span>
+          <h3 class="font-headline font-bold text-on-surface mb-2">Discussion Guide</h3>
+          <p class="text-on-surface-variant text-sm leading-relaxed">Mga tanong para sa magulang at guro bago, habang, at pagkatapos ng pagbabasa.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pricing Preview -->
+  <section class="bg-surface-container-low/60 py-20 px-6">
+    <div class="max-w-4xl mx-auto text-center">
+      <h2 class="font-headline text-4xl font-extrabold text-on-surface mb-3">Magsimula nang Libre</h2>
+      <p class="text-on-surface-variant text-lg mb-12">3 stories a day, libre habambuhay. Mag-upgrade anytime para sa higit pa.</p>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-3xl mx-auto">
+        <div class="bg-surface-container-lowest rounded-xl p-7 shadow-whisper-sm text-left">
+          <p class="font-headline font-extrabold text-2xl text-on-surface">Free</p>
+          <p class="text-4xl font-extrabold text-primary mt-1">₱0</p>
+          <ul class="mt-5 space-y-2.5 text-sm text-on-surface-variant">
+            <li>✓ 3 stories/day</li>
+            <li>✓ All languages</li>
+            <li>✓ Image prompts</li>
+            <li>✓ Save 5 stories</li>
+          </ul>
+          <button class="btn-ghost w-full mt-7 py-3" onclick="openModal('register')">Magsimula</button>
+        </div>
+        <div class="bg-primary rounded-xl p-7 shadow-primary-glow text-white text-left relative overflow-hidden">
+          <div class="absolute top-4 right-4 bg-white/20 rounded-full px-3 py-0.5 text-xs font-bold font-label tracking-widest">POPULAR</div>
+          <p class="font-headline font-extrabold text-2xl">Pro</p>
+          <p class="text-4xl font-extrabold mt-1">₱199<span class="text-lg font-normal opacity-80">/mo</span></p>
+          <ul class="mt-5 space-y-2.5 text-sm opacity-90">
+            <li>✓ 20 stories/day</li>
+            <li>✓ 30 images/month</li>
+            <li>✓ Book PDF export</li>
+            <li>✓ Unlimited saves</li>
+          </ul>
+          <button class="bg-white text-primary font-headline font-bold w-full mt-7 py-3 rounded-full hover:bg-surface-bright transition-colors" onclick="openModal('register')">Mag-Upgrade</button>
+        </div>
+        <div class="bg-surface-container-lowest rounded-xl p-7 shadow-whisper-sm text-left">
+          <p class="font-headline font-extrabold text-2xl text-on-surface">Business</p>
+          <p class="text-4xl font-extrabold text-on-surface mt-1">₱599<span class="text-lg font-normal text-on-surface-variant">/mo</span></p>
+          <ul class="mt-5 space-y-2.5 text-sm text-on-surface-variant">
+            <li>✓ Unlimited stories</li>
+            <li>✓ 150 images/month</li>
+            <li>✓ White-label PDF</li>
+            <li>✓ Advanced layouts</li>
+          </ul>
+          <button class="btn-ghost w-full mt-7 py-3" onclick="openModal('register')">Makipag-ugnayan</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Final CTA -->
+  <section class="py-20 px-6 bg-surface text-center">
+    <div class="max-w-2xl mx-auto space-y-7">
+      <h2 class="font-headline text-4xl md:text-5xl font-extrabold text-on-surface">Handa ka na bang lumikha?</h2>
+      <p class="text-on-surface-variant text-xl">Sumali sa mga pamilya na gumagawa ng espesyal na alaala sa Kwento Ko.</p>
+      <button class="btn-primary text-lg px-10 py-4 inline-flex items-center gap-2" onclick="openModal('register')">
+        <span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 24;">auto_stories</span>
+        Gumawa ng Libreng Account
+      </button>
+    </div>
+  </section>
+
+  <!-- Landing Footer -->
+  <footer class="w-full rounded-t-3xl bg-surface-container-low mt-0">
+    <div class="flex flex-col md:flex-row justify-between items-center p-10 gap-5 max-w-7xl mx-auto">
       <div>
-        <h2 id="story-title-display" style="font-family:'Baloo 2',sans-serif;color:var(--deep-blue);"></h2>
-        <div id="story-badges"></div>
+        <span class="font-brand text-xl text-primary">Kwento Ko</span>
+        <p class="text-sm text-on-surface-variant mt-1.5 font-medium">© 2025 Crafts by AlibebePH. Handcrafted with love.</p>
       </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        <button class="btn-ghost" onclick="saveStory()">💾 Save</button>
-        <div style="position:relative;">
-          <button class="btn-ghost" onclick="toggleExportMenu()">📤 Export ▼</button>
-          <div id="export-menu" style="display:none;position:absolute;right:0;top:40px;background:white;border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,0.12);padding:8px 0;min-width:180px;z-index:50;">
-            <button onclick="copyStoryText()" style="display:block;width:100%;text-align:left;padding:10px 16px;border:none;background:none;cursor:pointer;font-family:'Quicksand',sans-serif;font-size:14px;">📄 Copy Text</button>
-            <button onclick="exportDocx()" style="display:block;width:100%;text-align:left;padding:10px 16px;border:none;background:none;cursor:pointer;font-family:'Quicksand',sans-serif;font-size:14px;">📝 Export DOCX</button>
-            <button onclick="exportTxt()" style="display:block;width:100%;text-align:left;padding:10px 16px;border:none;background:none;cursor:pointer;font-family:'Quicksand',sans-serif;font-size:14px;">📋 Export TXT</button>
-            <button onclick="openCompileModal()" style="display:block;width:100%;text-align:left;padding:10px 16px;border:none;background:none;cursor:pointer;font-family:'Quicksand',sans-serif;font-size:14px;">📚 Compile Book PDF</button>
+      <nav class="flex flex-wrap justify-center gap-6">
+        <a href="https://www.alibebeph.com" class="text-on-surface-variant hover:text-primary transition-colors text-sm font-medium">alibebeph.com</a>
+        <a href="#" class="text-on-surface-variant hover:text-primary transition-colors text-sm font-medium">Privacy</a>
+        <a href="#" class="text-on-surface-variant hover:text-primary transition-colors text-sm font-medium">Terms</a>
+      </nav>
+    </div>
+  </footer>
+</div>
+
+<!-- ── Wizard Progress Bar (actual) ── -->
+<div id="wizard-progress-bar" class="hidden bg-surface-container-low/60 border-b border-outline-variant/10 pt-20">
+  <div class="max-w-3xl mx-auto px-4 py-4">
+    <div class="flex justify-between items-start relative">
+      <!-- Progress line background -->
+      <div class="absolute top-5 left-0 w-full h-1 bg-surface-container-high -z-10 rounded-full"></div>
+      <!-- Progress line fill (controlled by JS width) -->
+      <div id="progress-line-fill" class="absolute top-5 left-0 h-1 bg-primary -z-10 rounded-full transition-all duration-500" style="width:0%"></div>
+      <!-- Step 1 -->
+      <div class="flex flex-col items-center gap-1.5">
+        <div class="step-dot" id="step-dot-1">1</div>
+        <span class="step-lbl" id="step-lbl-1">Character</span>
+      </div>
+      <!-- Step 2 -->
+      <div class="flex flex-col items-center gap-1.5">
+        <div class="step-dot" id="step-dot-2">2</div>
+        <span class="step-lbl" id="step-lbl-2">Story Setup</span>
+      </div>
+      <!-- Step 3 -->
+      <div class="flex flex-col items-center gap-1.5">
+        <div class="step-dot" id="step-dot-3">3</div>
+        <span class="step-lbl" id="step-lbl-3">Generate</span>
+      </div>
+      <!-- Step 4 -->
+      <div class="flex flex-col items-center gap-1.5">
+        <div class="step-dot" id="step-dot-4">4</div>
+        <span class="step-lbl" id="step-lbl-4">Your Book</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Main App ── -->
+<main id="app-main" style="display:none;" class="pt-20 pb-24 min-h-screen bg-surface">
+
+  <!-- ── Step 0: Dashboard ── -->
+  <div class="wizard-view" id="view-step0">
+    <div class="max-w-5xl mx-auto px-4 md:px-6 py-8 space-y-8">
+
+      <!-- Welcome Banner -->
+      <section class="relative overflow-hidden rounded-xl bg-surface-container-low p-8 md:p-12">
+        <div class="relative z-10 max-w-2xl">
+          <p class="text-xs font-label font-bold uppercase tracking-widest text-on-surface-variant mb-2">Kwento Ko Dashboard</p>
+          <h2 class="font-headline text-3xl md:text-5xl font-extrabold text-on-surface tracking-tight mb-3">
+            Kumusta, <span id="dashboard-name" class="text-primary">Kaibigan</span>! 👋
+          </h2>
+          <p class="font-body text-lg text-on-surface-variant">Ready na ba para sa bagong kwento?</p>
+          <button class="btn-primary mt-6 text-base px-8 py-3.5 inline-flex items-center gap-2" onclick="startNewStory()">
+            <span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 24;">auto_fix_high</span>
+            Bagong Kwento
+          </button>
+        </div>
+        <div class="absolute -bottom-14 -right-14 w-72 h-72 bg-primary-container/20 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="absolute top-4 right-4 text-6xl opacity-20 pointer-events-none">📖</div>
+      </section>
+
+      <!-- Stats + Quick Templates Bento -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Usage Stats -->
+        <div class="bg-surface-container-lowest rounded-xl p-6 shadow-whisper-sm flex flex-col">
+          <h3 class="font-headline text-lg font-bold text-on-surface mb-5 flex items-center gap-2">
+            <span class="material-symbols-outlined text-primary text-xl">bar_chart</span>
+            Paggamit
+          </h3>
+          <div class="space-y-4 flex-1">
+            <div>
+              <div class="flex justify-between text-sm font-label font-semibold mb-1.5 text-on-surface-variant">
+                <span>Mga Kwento Ngayon</span>
+                <span id="stat-stories">—</span>
+              </div>
+              <div class="h-2 w-full bg-surface-container rounded-full overflow-hidden">
+                <div class="h-full bg-primary rounded-full transition-all duration-700" id="stat-stories-bar" style="width:0%"></div>
+              </div>
+            </div>
+            <div>
+              <div class="flex justify-between text-sm font-label font-semibold mb-1.5 text-on-surface-variant">
+                <span>Mga Larawan Ngayong Buwan</span>
+                <span id="stat-images">—</span>
+              </div>
+              <div class="h-2 w-full bg-surface-container rounded-full overflow-hidden">
+                <div class="h-full bg-secondary rounded-full transition-all duration-700" id="stat-images-bar" style="width:0%"></div>
+              </div>
+            </div>
+          </div>
+          <div class="pt-4 mt-4 border-t border-surface-container">
+            <span id="stat-tier" class="inline-block px-3 py-1 rounded-full text-xs font-label font-bold uppercase tracking-widest bg-surface-container text-on-surface-variant"></span>
+          </div>
+        </div>
+
+        <!-- Quick Templates -->
+        <div class="lg:col-span-2 bg-surface-container-lowest rounded-xl p-6 shadow-whisper-sm">
+          <h3 class="font-headline text-lg font-bold text-on-surface mb-5">Quick Start</h3>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <button class="flex flex-col items-center gap-2.5 p-4 rounded-xl bg-surface-container hover:bg-primary-container/20 transition-all group border border-outline-variant/10" onclick="startWithTemplate('adventure')">
+              <span class="text-3xl group-hover:scale-110 transition-transform">🗺️</span>
+              <span class="font-label font-bold text-sm text-on-surface">Adventure</span>
+            </button>
+            <button class="flex flex-col items-center gap-2.5 p-4 rounded-xl bg-surface-container hover:bg-primary-container/20 transition-all group border border-outline-variant/10" onclick="startWithTemplate('funny')">
+              <span class="text-3xl group-hover:scale-110 transition-transform">🤣</span>
+              <span class="font-label font-bold text-sm text-on-surface">Funny</span>
+            </button>
+            <button class="flex flex-col items-center gap-2.5 p-4 rounded-xl bg-surface-container hover:bg-primary-container/20 transition-all group border border-outline-variant/10" onclick="startWithTemplate('family')">
+              <span class="text-3xl group-hover:scale-110 transition-transform">👨‍👩‍👧</span>
+              <span class="font-label font-bold text-sm text-on-surface">Pamilya</span>
+            </button>
+            <button class="flex flex-col items-center gap-2.5 p-4 rounded-xl bg-surface-container hover:bg-primary-container/20 transition-all group border border-outline-variant/10" onclick="startWithTemplate('bedtime')">
+              <span class="text-3xl group-hover:scale-110 transition-transform">🌙</span>
+              <span class="font-label font-bold text-sm text-on-surface">Bedtime</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent Stories -->
+      <section>
+        <div class="flex justify-between items-center mb-5">
+          <h2 class="font-headline text-2xl font-extrabold text-on-surface">Mga Nakaraang Kwento</h2>
+          <button class="text-primary font-headline font-bold text-sm hover:underline flex items-center gap-1" onclick="showLibrary()">
+            View Library
+            <span class="material-symbols-outlined text-base">chevron_right</span>
+          </button>
+        </div>
+        <div id="dashboard-recent-stories">
+          <div class="flex items-center justify-center py-16 flex-col gap-3">
+            <div class="relative w-12 h-12">
+              <div class="absolute inset-0 rounded-full border-4 border-primary-container border-t-primary animate-spin"></div>
+            </div>
+            <p class="text-on-surface-variant text-sm font-medium">Nilo-load ang mga kwento...</p>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+  <!-- ── Step 1: Character Builder ── -->
+  <div class="wizard-view" id="view-step1">
+    <div class="max-w-4xl mx-auto px-4 py-8 space-y-8">
+
+      <div class="text-center">
+        <h2 class="font-headline text-3xl md:text-4xl font-extrabold text-on-surface tracking-tight">Build Your Character</h2>
+        <p class="text-on-surface-variant mt-2 max-w-md mx-auto">Every great tale begins with a soul. Who will lead this journey?</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-12 gap-8 items-start">
+        <!-- Character Preview -->
+        <div class="md:col-span-5 bg-surface-container-lowest rounded-xl shadow-whisper p-6 flex flex-col items-center justify-center text-center min-h-56">
+          <div class="w-20 h-20 bg-surface-container-low rounded-full flex items-center justify-center text-5xl mb-4">🌟</div>
+          <h3 class="font-headline text-2xl font-bold text-on-surface" id="preview-name">Your Character</h3>
+          <p class="text-on-surface-variant text-sm mt-1 font-medium" id="preview-type"></p>
+          <div id="preview-traits" class="mt-3 flex flex-wrap justify-center gap-2"></div>
+        </div>
+
+        <!-- Inputs -->
+        <div class="md:col-span-7 space-y-6">
+          <!-- Name -->
+          <div>
+            <label class="field-label">Character Name <span class="text-error">*</span></label>
+            <input type="text" id="char-name" placeholder="e.g. Niko, Luna, Kiko..." oninput="updateCharPreview()" />
+          </div>
+
+          <!-- Type -->
+          <div>
+            <label class="field-label">Type of Hero</label>
+            <div class="card-grid" id="char-type-grid">
+              <div class="choice-card selected" data-value="Animal Friend" onclick="selectCard(this,'char-type-grid')"><span class="emoji">🦊</span><span class="label">Animal Friend</span></div>
+              <div class="choice-card" data-value="Filipino Kid" onclick="selectCard(this,'char-type-grid')"><span class="emoji">🧒</span><span class="label">Filipino Kid</span></div>
+              <div class="choice-card" data-value="Fantasy Being" onclick="selectCard(this,'char-type-grid')"><span class="emoji">🧚</span><span class="label">Fantasy Being</span></div>
+              <div class="choice-card" data-value="Custom" onclick="selectCard(this,'char-type-grid');document.getElementById('custom-type-wrap').style.display='block'"><span class="emoji">✏️</span><span class="label">Custom</span></div>
+            </div>
+            <div id="custom-type-wrap" style="display:none;">
+              <input type="text" id="custom-type" placeholder="Describe your character type..." oninput="updateCharPreview()" />
+            </div>
+          </div>
+
+          <!-- Traits -->
+          <div>
+            <label class="field-label">Personality — pick up to 3</label>
+            <div class="pills" id="trait-pills">
+              <div class="pill" data-value="Matapang" onclick="togglePill(this,'trait-pills',3)">Matapang (Brave)</div>
+              <div class="pill" data-value="Mausisa" onclick="togglePill(this,'trait-pills',3)">Mausisa (Curious)</div>
+              <div class="pill" data-value="Masaya" onclick="togglePill(this,'trait-pills',3)">Masaya (Cheerful)</div>
+              <div class="pill" data-value="Mahal sa Lahat" onclick="togglePill(this,'trait-pills',3)">Mahal sa Lahat (Loving)</div>
+              <div class="pill" data-value="Matalino" onclick="togglePill(this,'trait-pills',3)">Matalino (Smart)</div>
+              <div class="pill" data-value="Mahiyain" onclick="togglePill(this,'trait-pills',3)">Mahiyain (Shy)</div>
+              <div class="pill" data-value="Palaro" onclick="togglePill(this,'trait-pills',3)">Palaro (Playful)</div>
+              <div class="pill" data-value="Mabait" onclick="togglePill(this,'trait-pills',3)">Mabait (Kind)</div>
+            </div>
+          </div>
+
+          <!-- Feature -->
+          <div>
+            <label class="field-label">Distinctive Feature <span class="text-on-surface-variant font-normal normal-case text-xs">(optional)</span></label>
+            <input type="text" id="char-feature" placeholder="e.g. always wears a red bandana, has a magical tail..." oninput="updateCharPreview()" />
+          </div>
+        </div>
+      </div>
+
+      <!-- More Options -->
+      <details class="bg-surface-container-lowest rounded-xl p-5 shadow-whisper-sm">
+        <summary class="cursor-pointer font-label font-bold text-primary text-sm uppercase tracking-wider select-none">More Options ▼</summary>
+        <div class="mt-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="field-label">Character Age</label>
+            <input type="text" id="char-age" placeholder="e.g. 7 years old, young fox..." />
+          </div>
+          <div>
+            <label class="field-label">Special Ability</label>
+            <input type="text" id="char-ability" placeholder="e.g. can talk to animals..." />
+          </div>
+          <div class="md:col-span-2">
+            <label class="field-label">Supporting Character + Relationship</label>
+            <input type="text" id="char-support" placeholder="e.g. Nanay Rosa (mother), Lolo Ben (grandfather)..." />
+          </div>
+        </div>
+      </details>
+
+      <!-- Character preview card (populated by JS) -->
+      <div id="character-preview">
+        <h3 id="preview-name-2" style="display:none;"></h3>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn-ghost flex items-center gap-2" onclick="showDashboard()">
+          <span class="material-symbols-outlined text-base">home</span> Dashboard
+        </button>
+        <button class="btn-primary text-base px-8 py-3.5 flex items-center gap-2" onclick="goToStep(2)">
+          Story Setup
+          <span class="material-symbols-outlined text-lg">arrow_forward</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Step 2: Story Setup ── -->
+  <div class="wizard-view" id="view-step2">
+    <div class="max-w-3xl mx-auto px-4 py-8 space-y-6">
+
+      <div class="text-center">
+        <h2 class="font-headline text-3xl md:text-4xl font-extrabold text-on-surface tracking-tight">Setting the Scene</h2>
+        <p class="text-on-surface-variant mt-2">Where and how does the magic unfold?</p>
+      </div>
+
+      <!-- Tone -->
+      <div class="bg-surface-container-lowest rounded-xl p-6 shadow-whisper-sm space-y-3">
+        <label class="field-label">Story Tone</label>
+        <div class="pills" id="tone-pills">
+          <div class="pill" data-value="Funny" onclick="selectPill(this,'tone-pills')">🤣 Funny</div>
+          <div class="pill selected" data-value="Gentle" onclick="selectPill(this,'tone-pills')">🌿 Gentle</div>
+          <div class="pill" data-value="Adventurous" onclick="selectPill(this,'tone-pills')">🗺️ Adventurous</div>
+          <div class="pill" data-value="Mysterious" onclick="selectPill(this,'tone-pills')">🌙 Mysterious</div>
+          <div class="pill" data-value="Heartwarming" onclick="selectPill(this,'tone-pills')">💛 Heartwarming</div>
+        </div>
+      </div>
+
+      <!-- Setting -->
+      <div class="bg-surface-container-lowest rounded-xl p-6 shadow-whisper-sm space-y-3">
+        <label class="field-label">Setting</label>
+        <div class="card-grid" id="setting-grid" style="grid-template-columns:repeat(4,1fr);">
+          <div class="choice-card" data-value="City" data-fil="Lungsod" onclick="selectCard(this,'setting-grid')"><span class="emoji">🏙️</span><span class="label">Lungsod</span><span class="sublabel">City</span></div>
+          <div class="choice-card selected" data-value="Province" data-fil="Probinsya" onclick="selectCard(this,'setting-grid')"><span class="emoji">🌾</span><span class="label">Probinsya</span><span class="sublabel">Province</span></div>
+          <div class="choice-card" data-value="Sea" data-fil="Dagat" onclick="selectCard(this,'setting-grid')"><span class="emoji">🌊</span><span class="label">Dagat</span><span class="sublabel">Sea</span></div>
+          <div class="choice-card" data-value="Forest" data-fil="Gubat" onclick="selectCard(this,'setting-grid')"><span class="emoji">🌳</span><span class="label">Gubat</span><span class="sublabel">Forest</span></div>
+          <div class="choice-card" data-value="Home" data-fil="Tahanan" onclick="selectCard(this,'setting-grid')"><span class="emoji">🏡</span><span class="label">Tahanan</span><span class="sublabel">Home</span></div>
+          <div class="choice-card" data-value="School" data-fil="Paaralan" onclick="selectCard(this,'setting-grid')"><span class="emoji">🏫</span><span class="label">Paaralan</span><span class="sublabel">School</span></div>
+          <div class="choice-card" data-value="Magical Place" data-fil="Mahiwagang Lugar" onclick="selectCard(this,'setting-grid')"><span class="emoji">✨</span><span class="label">Mahiwagang</span><span class="sublabel">Magical</span></div>
+          <div class="choice-card" data-value="Custom" data-fil="" onclick="selectCard(this,'setting-grid');document.getElementById('custom-setting-wrap').style.display='block'"><span class="emoji">✏️</span><span class="label">Custom</span></div>
+        </div>
+        <div id="custom-setting-wrap" style="display:none;">
+          <input type="text" id="custom-setting" placeholder="Describe the setting..." />
+        </div>
+      </div>
+
+      <!-- Age + Length -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <div class="bg-surface-container-lowest rounded-xl p-5 shadow-whisper-sm">
+          <label class="field-label">Age Range</label>
+          <div class="pills" id="age-pills">
+            <div class="pill" data-value="2-4" onclick="selectPill(this,'age-pills')">2-4</div>
+            <div class="pill" data-value="3-5" onclick="selectPill(this,'age-pills')">3-5</div>
+            <div class="pill selected" data-value="4-6" onclick="selectPill(this,'age-pills')">4-6</div>
+            <div class="pill" data-value="5-7" onclick="selectPill(this,'age-pills')">5-7</div>
+            <div class="pill" data-value="6-8" onclick="selectPill(this,'age-pills')">6-8</div>
+          </div>
+        </div>
+        <div class="bg-surface-container-lowest rounded-xl p-5 shadow-whisper-sm">
+          <label class="field-label">Story Length</label>
+          <div class="pills" id="length-pills">
+            <div class="pill" data-value="6" onclick="selectPill(this,'length-pills')">Short — 6 pages</div>
+            <div class="pill selected" data-value="10" onclick="selectPill(this,'length-pills')">Standard — 10 pages</div>
+            <div class="pill" data-value="14" onclick="selectPill(this,'length-pills')" id="length-14">Long — 14 pages 🔒</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Values -->
+      <div class="bg-surface-container-lowest rounded-xl p-6 shadow-whisper-sm space-y-3">
+        <label class="field-label">Values Category</label>
+        <div class="card-grid" id="values-grid" style="grid-template-columns:repeat(3,1fr);">
+          <div class="choice-card selected" data-value="Filipino Family" onclick="selectCard(this,'values-grid');updateLessons()"><span class="emoji">👨‍👩‍👧</span><span class="label">Filipino Family</span></div>
+          <div class="choice-card" data-value="Christian" onclick="selectCard(this,'values-grid');updateLessons()"><span class="emoji">✝️</span><span class="label">Christian</span></div>
+          <div class="choice-card" data-value="Life Lessons" onclick="selectCard(this,'values-grid');updateLessons()"><span class="emoji">💡</span><span class="label">Life Lessons</span></div>
+          <div class="choice-card" data-value="Environment" onclick="selectCard(this,'values-grid');updateLessons()"><span class="emoji">🌿</span><span class="label">Environment</span></div>
+          <div class="choice-card" data-value="Social-Emotional" onclick="selectCard(this,'values-grid');updateLessons()"><span class="emoji">💛</span><span class="label">Social-Emotional</span></div>
+        </div>
+
+        <label class="field-label">Specific Lesson</label>
+        <div class="pills" id="lesson-pills"></div>
+      </div>
+
+      <!-- Options -->
+      <div class="bg-surface-container-lowest rounded-xl p-6 shadow-whisper-sm space-y-4">
+        <label class="flex items-center gap-3 cursor-pointer group">
+          <input type="checkbox" id="cause-effect-toggle" checked class="rounded text-primary focus:ring-primary w-4 h-4 flex-shrink-0" style="width:auto;" />
+          <div>
+            <span class="font-label font-semibold text-sm text-on-surface">Cause &amp; Effect</span>
+            <p class="text-xs text-on-surface-variant mt-0.5">Show a gentle wrong choice + consequence + resolution on one page</p>
+          </div>
+        </label>
+
+        <div>
+          <label class="field-label">Primary Language</label>
+          <div class="pills" id="lang-pills">
+            <div class="pill selected" data-value="English" onclick="selectPill(this,'lang-pills');updateBilingualState()">English</div>
+            <div class="pill" data-value="Filipino" onclick="selectPill(this,'lang-pills');updateBilingualState()">Filipino</div>
+            <div class="pill" data-value="Cebuano" onclick="selectPill(this,'lang-pills');updateBilingualState()">Cebuano</div>
+            <div class="pill" data-value="Ilocano" onclick="selectPill(this,'lang-pills');updateBilingualState()">Ilocano</div>
+            <div class="pill" data-value="Taglish" onclick="selectPill(this,'lang-pills');updateBilingualState()">Taglish</div>
+          </div>
+        </div>
+
+        <label class="flex items-center gap-3 cursor-pointer">
+          <input type="checkbox" id="bilingual-toggle" class="rounded text-primary focus:ring-primary w-4 h-4 flex-shrink-0" style="width:auto;" />
+          <span class="font-label font-semibold text-sm text-on-surface">Add English translation (bilingual mode)</span>
+        </label>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn-ghost flex items-center gap-2" onclick="goToStep(1)">
+          <span class="material-symbols-outlined text-base">arrow_back</span> Back
+        </button>
+        <button class="btn-primary text-base px-8 py-3.5 flex items-center gap-2" onclick="goToStep(3)">
+          Generate Story
+          <span class="material-symbols-outlined text-lg">auto_fix_high</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Step 3: Generate ── -->
+  <div class="wizard-view" id="view-step3">
+    <div class="max-w-3xl mx-auto px-4 py-8 space-y-6">
+
+      <div class="section-header">③ Your Character Profile</div>
+
+      <div id="character-profile-result">
+        <div class="flex flex-col items-center justify-center py-16 text-center">
+          <div class="relative w-20 h-20 mb-6">
+            <div class="absolute inset-0 rounded-full border-4 border-primary-container border-t-primary animate-spin"></div>
+            <div class="absolute inset-0 flex items-center justify-center">
+              <span class="material-symbols-outlined text-3xl text-primary" style="font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 24;">auto_fix_high</span>
+            </div>
+          </div>
+          <p class="font-fun text-lg font-bold text-on-surface">Nilikha ang tauhan...</p>
+        </div>
+      </div>
+
+      <div id="story-gen-section" style="display:none;" class="bg-surface-container-low rounded-xl p-6 text-center shadow-whisper-sm">
+        <h3 class="font-headline text-xl font-bold text-on-surface mb-2">Ready to write your story!</h3>
+        <p class="text-on-surface-variant text-sm mb-5">Your character profile is set. Click below to generate the full story.</p>
+        <div class="btn-row justify-center">
+          <button class="btn-primary text-base px-10 py-3.5 flex items-center gap-2" id="write-story-btn" onclick="generateStory()">
+            <span class="material-symbols-outlined">auto_stories</span>
+            Write My Story
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── Step 4: Your Book ── -->
+  <div class="wizard-view" id="view-step4">
+    <!-- Story header -->
+    <div class="bg-surface-container-low/60 backdrop-blur-sm border-b border-outline-variant/10 px-4 py-4">
+      <div class="max-w-5xl mx-auto flex items-start justify-between flex-wrap gap-3">
+        <div>
+          <h2 id="story-title-display" class="font-headline text-xl font-extrabold text-on-surface"></h2>
+          <div id="story-badges" class="mt-1.5 flex flex-wrap gap-1"></div>
+        </div>
+        <div class="flex gap-2.5 flex-wrap">
+          <button class="btn-ghost text-sm py-2 px-4 flex items-center gap-1.5" onclick="saveStory()">
+            <span class="material-symbols-outlined text-base">save</span> Save
+          </button>
+          <div class="relative">
+            <button class="btn-ghost text-sm py-2 px-4 flex items-center gap-1.5" onclick="toggleExportMenu()">
+              <span class="material-symbols-outlined text-base">file_download</span> Export
+              <span class="material-symbols-outlined text-sm">expand_more</span>
+            </button>
+            <div id="export-menu">
+              <button onclick="copyStoryText()">📄 Copy Text</button>
+              <button onclick="exportDocx()">📝 Export DOCX</button>
+              <button onclick="exportTxt()">📋 Export TXT</button>
+              <button onclick="openCompileModal()">📚 Compile Book PDF</button>
+            </div>
           </div>
         </div>
       </div>
     </div>
 
     <!-- Tabs -->
-    <div id="tab-bar">
-      <button class="tab-btn active" onclick="switchTab('story')">📖 Story</button>
-      <button class="tab-btn" onclick="switchTab('prompts')">🎨 Image Prompts</button>
-      <button class="tab-btn" onclick="switchTab('character-card')">🃏 Character Card</button>
-      <button class="tab-btn" onclick="switchTab('discussion')">❓ Discussion Guide</button>
-      <button class="tab-btn" onclick="switchTab('library')">📚 My Library</button>
+    <div id="tab-bar" class="flex border-b border-surface-container-high bg-surface overflow-x-auto">
+      <div class="max-w-5xl mx-auto flex w-full px-2">
+        <button class="tab-btn active" onclick="switchTab('story')">📖 Story</button>
+        <button class="tab-btn" onclick="switchTab('prompts')">🎨 Image Prompts</button>
+        <button class="tab-btn" onclick="switchTab('character-card')">🃏 Character Card</button>
+        <button class="tab-btn" onclick="switchTab('discussion')">❓ Discussion Guide</button>
+        <button class="tab-btn" onclick="switchTab('library')">📚 My Library</button>
+      </div>
     </div>
 
-    <div id="tab-story" class="tab-panel active">
-      <div id="back-cover-summary" style="background:var(--cream);border-radius:16px;padding:20px;margin-bottom:20px;"></div>
-      <div id="story-pages-container"></div>
-      <div id="moral-banner" style="display:none;background:var(--coral);color:white;border-radius:16px;padding:24px;text-align:center;margin:20px 0;"></div>
-      <div id="compile-cta"></div>
+    <!-- Tab panels -->
+    <div id="tab-story" class="tab-panel active" style="max-width:none;padding:0;">
+      <div class="max-w-3xl mx-auto px-4 py-6">
+        <div id="back-cover-summary" class="bg-surface-container-low rounded-xl p-5 mb-5 shadow-whisper-sm"></div>
+        <div id="story-pages-container"></div>
+        <div id="moral-banner" style="display:none;" class="rounded-xl p-6 text-center my-5 bg-primary text-on-primary"></div>
+        <div id="compile-cta"></div>
+      </div>
     </div>
 
     <div id="tab-prompts" class="tab-panel">
-      <div style="margin-bottom:12px;">
-        <label style="font-family:'Quicksand',sans-serif;font-weight:600;">Prompt Style:</label>
-        <div class="pills" id="prompt-style-pills" style="margin-top:6px;">
+      <div class="mb-4">
+        <label class="field-label">Prompt Style:</label>
+        <div class="pills mt-2" id="prompt-style-pills">
           <div class="pill selected" data-value="dalle" onclick="selectPill(this,'prompt-style-pills');renderPrompts()">DALL-E / Canva</div>
           <div class="pill" data-value="midjourney" onclick="selectPill(this,'prompt-style-pills');renderPrompts()">Midjourney</div>
         </div>
@@ -464,8 +1070,8 @@
     </div>
 
     <div id="tab-character-card" class="tab-panel">
-      <div id="character-card-print"></div>
-      <div class="btn-row"><button class="btn-ghost" onclick="window.print()">🖨️ Print Character Card</button></div>
+      <div id="character-card-print" class="bg-white rounded-xl shadow-whisper p-6 max-w-md mx-auto"></div>
+      <div class="btn-row mt-5"><button class="btn-ghost" onclick="window.print()">🖨️ Print Character Card</button></div>
     </div>
 
     <div id="tab-discussion" class="tab-panel">
@@ -480,12 +1086,13 @@
 
 </main>
 
-<!-- Compile Modal -->
-<div class="modal-overlay" id="compile-modal">
-  <div class="modal" style="max-width:520px;">
+<!-- ── Compile Modal ── -->
+<div class="modal-overlay" id="compile-modal" onclick="if(event.target===this)this.classList.remove('open')">
+  <div id="compile-inner">
     <h2>Compile Your Book 📚</h2>
-    <label class="field-label">Dedication <span style="font-weight:400;color:#999;">(optional)</span></label>
-    <textarea id="compile-dedication" placeholder="This book is dedicated to..."></textarea>
+
+    <label class="field-label">Dedication <span class="text-on-surface-variant font-normal normal-case text-xs">(optional)</span></label>
+    <textarea id="compile-dedication" placeholder="This book is dedicated to..." style="border-radius:1rem;margin-bottom:4px;"></textarea>
 
     <label class="field-label">Print Format</label>
     <div class="card-grid" id="format-grid">
@@ -502,44 +1109,107 @@
       <div class="pill" data-value="Educational" onclick="selectPill(this,'template-pills')">Educational</div>
     </div>
 
-    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-family:'Quicksand',sans-serif;font-size:14px;margin:8px 0;">
-      <input type="checkbox" id="compile-discussion" checked style="width:auto;" />Include Discussion Guide
-    </label>
-    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-family:'Quicksand',sans-serif;font-size:14px;margin-bottom:16px;">
-      <input type="checkbox" id="compile-print-guide" checked style="width:auto;" />Include Print Instructions
-    </label>
+    <div class="space-y-3 mb-4">
+      <label class="flex items-center gap-2.5 cursor-pointer text-sm font-medium text-on-surface">
+        <input type="checkbox" id="compile-discussion" checked style="width:auto;" class="rounded text-primary" />
+        Include Discussion Guide
+      </label>
+      <label class="flex items-center gap-2.5 cursor-pointer text-sm font-medium text-on-surface">
+        <input type="checkbox" id="compile-print-guide" checked style="width:auto;" class="rounded text-primary" />
+        Include Print Instructions
+      </label>
+    </div>
 
-    <div id="compile-error" style="color:#e53e3e;font-size:14px;margin-bottom:8px;display:none;"></div>
-    <div style="display:flex;gap:10px;">
-      <button class="btn-primary" onclick="submitCompile(false)" style="flex:1;">📥 Download PDF</button>
-      <button class="btn-ghost" onclick="document.getElementById('compile-modal').classList.remove('open')">Cancel</button>
+    <div id="compile-error" style="color:#b33938;font-size:14px;margin-bottom:10px;display:none;font-weight:600;"></div>
+    <div class="flex gap-3">
+      <button class="btn-primary flex-1 py-3.5" onclick="submitCompile(false)">📥 Download PDF</button>
+      <button class="btn-ghost px-5" onclick="document.getElementById('compile-modal').classList.remove('open')">Cancel</button>
     </div>
   </div>
 </div>
 
-<!-- Admin View (rendered by JS when path is /admin) -->
-<div id="admin-view">
-  <div style="background:var(--deep-blue);padding:16px 24px;">
-    <h1 style="font-family:'Baloo 2',sans-serif;color:var(--sun-yellow);">🔧 Admin Dashboard</h1>
-  </div>
-  <div style="max-width:1000px;margin:24px auto;padding:0 16px;">
-    <div id="admin-nav" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;">
-      <button class="pill selected" onclick="showAdminTab('overview', event)">Overview</button>
-      <button class="pill" onclick="showAdminTab('ai-settings', event)">AI Settings</button>
-      <button class="pill" onclick="showAdminTab('users', event)">Users</button>
-      <button class="pill" onclick="showAdminTab('promo', event)">Promo Codes</button>
-      <button class="pill" onclick="showAdminTab('settings', event)">System Settings</button>
+<!-- ── Admin View ── -->
+<div id="admin-view" style="display:none;" class="pt-16 min-h-screen bg-surface">
+  <div class="flex min-h-[calc(100vh-64px)]">
+
+    <!-- Sidebar (desktop) -->
+    <aside class="hidden md:flex flex-col w-60 bg-surface-container-low fixed h-[calc(100vh-64px)] top-16 p-5 gap-1.5">
+      <div id="admin-nav" class="flex flex-col gap-1 w-full">
+        <button class="pill selected text-left flex items-center gap-3 px-4 py-2.5 w-full rounded-full" onclick="showAdminTab('overview', event)">
+          <span class="material-symbols-outlined text-xl">bar_chart</span> Overview
+        </button>
+        <button class="pill text-left flex items-center gap-3 px-4 py-2.5 w-full rounded-full" onclick="showAdminTab('ai-settings', event)">
+          <span class="material-symbols-outlined text-xl">settings_input_component</span> AI Settings
+        </button>
+        <button class="pill text-left flex items-center gap-3 px-4 py-2.5 w-full rounded-full" onclick="showAdminTab('users', event)">
+          <span class="material-symbols-outlined text-xl">group</span> Users
+        </button>
+        <button class="pill text-left flex items-center gap-3 px-4 py-2.5 w-full rounded-full" onclick="showAdminTab('promo', event)">
+          <span class="material-symbols-outlined text-xl">local_offer</span> Promo Codes
+        </button>
+        <button class="pill text-left flex items-center gap-3 px-4 py-2.5 w-full rounded-full" onclick="showAdminTab('settings', event)">
+          <span class="material-symbols-outlined text-xl">tune</span> Settings
+        </button>
+      </div>
+      <!-- System health indicator -->
+      <div class="mt-auto bg-white rounded-xl p-3 border border-outline-variant/20">
+        <p class="text-xs font-label font-bold uppercase tracking-widest text-on-surface-variant mb-2">System</p>
+        <div class="flex items-center justify-between">
+          <span class="text-sm font-medium text-on-surface">API Status</span>
+          <span class="w-2.5 h-2.5 rounded-full bg-tertiary"></span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Mobile nav (top pills) -->
+    <div class="md:hidden w-full border-b border-surface-container-high bg-surface overflow-x-auto">
+      <div class="flex px-4 py-2" id="admin-nav-mobile" style="display:none!important;">
+        <!-- populated same as sidebar on mobile via CSS -->
+      </div>
     </div>
-    <div id="admin-overview" class="admin-section"></div>
-    <div id="admin-ai-settings" class="admin-section" style="display:none;"></div>
-    <div id="admin-users" class="admin-section" style="display:none;"></div>
-    <div id="admin-promo" class="admin-section" style="display:none;"></div>
-    <div id="admin-settings" class="admin-section" style="display:none;"></div>
+
+    <!-- Main content -->
+    <main class="flex-1 md:ml-60 p-5 md:p-8 bg-surface">
+      <div class="max-w-5xl mx-auto space-y-6">
+        <div id="admin-overview" class="admin-section"></div>
+        <div id="admin-ai-settings" class="admin-section" style="display:none;"></div>
+        <div id="admin-users" class="admin-section" style="display:none;"></div>
+        <div id="admin-promo" class="admin-section" style="display:none;"></div>
+        <div id="admin-settings" class="admin-section" style="display:none;"></div>
+      </div>
+    </main>
   </div>
+
+  <!-- Admin mobile bottom nav -->
+  <nav class="md:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center pt-2 pb-3 px-2 bg-surface shadow-[0px_-10px_30px_rgba(58,58,0,0.06)] rounded-t-2xl">
+    <button class="flex flex-col items-center text-on-surface-variant hover:text-primary p-2 text-xs font-label font-bold uppercase tracking-wider" onclick="showAdminTabMobile('overview')">
+      <span class="material-symbols-outlined text-xl mb-0.5">bar_chart</span>Overview
+    </button>
+    <button class="flex flex-col items-center text-on-surface-variant hover:text-primary p-2 text-xs font-label font-bold uppercase tracking-wider" onclick="showAdminTabMobile('ai-settings')">
+      <span class="material-symbols-outlined text-xl mb-0.5">settings_input_component</span>AI
+    </button>
+    <button class="flex flex-col items-center text-on-surface-variant hover:text-primary p-2 text-xs font-label font-bold uppercase tracking-wider" onclick="showAdminTabMobile('users')">
+      <span class="material-symbols-outlined text-xl mb-0.5">group</span>Users
+    </button>
+    <button class="flex flex-col items-center text-on-surface-variant hover:text-primary p-2 text-xs font-label font-bold uppercase tracking-wider" onclick="showAdminTabMobile('settings')">
+      <span class="material-symbols-outlined text-xl mb-0.5">tune</span>Settings
+    </button>
+  </nav>
 </div>
 
-<footer id="app-footer">
-  © 2025 Crafts by AlibebePH | alibebeph.com | All rights reserved.
+<!-- ── Footer ── -->
+<footer id="app-footer" class="w-full rounded-t-3xl bg-[#fefdc1] mt-12">
+  <div class="flex flex-col md:flex-row justify-between items-center p-10 gap-5 max-w-7xl mx-auto">
+    <div>
+      <span class="font-brand text-xl text-primary">Kwento Ko</span>
+      <p class="text-sm text-on-surface-variant mt-1.5 font-medium">© 2025 Crafts by AlibebePH. Handcrafted with love.</p>
+    </div>
+    <nav class="flex flex-wrap justify-center gap-6">
+      <a href="https://www.alibebeph.com" class="text-on-surface-variant hover:text-primary transition-colors text-sm font-medium">alibebeph.com</a>
+      <a href="#" class="text-on-surface-variant hover:text-primary transition-colors text-sm font-medium">Privacy</a>
+      <a href="#" class="text-on-surface-variant hover:text-primary transition-colors text-sm font-medium">Terms</a>
+    </nav>
+  </div>
 </footer>
 
 <script>
@@ -617,7 +1287,7 @@ async function loadUser() {
     state.user = data.user;
     state.subscription = data.subscription;
     showLoggedInUI();
-    showWizard();
+    showDashboard();
   } catch {
     localStorage.removeItem('kk_token');
     state.token = null;
@@ -628,9 +1298,10 @@ async function loadUser() {
 function showGuestUI() {
   document.getElementById('nav-guest').style.display = 'flex';
   document.getElementById('nav-user').style.display = 'none';
-  document.getElementById('wizard-progress').style.display = 'none';
-  document.getElementById('app-main').style.display = 'block';
-  document.getElementById('app-main').style.opacity = '0.7';
+  document.getElementById('wizard-progress-bar').classList.add('hidden');
+  document.getElementById('app-main').style.display = 'none';
+  document.getElementById('view-landing').style.display = 'block';
+  document.getElementById('app-footer').style.display = 'none';
 }
 
 function showLoggedInUI() {
@@ -640,11 +1311,45 @@ function showLoggedInUI() {
   document.getElementById('user-display-name').textContent = state.user.displayName;
 }
 
-function showWizard() {
-  document.getElementById('wizard-progress').style.display = 'flex';
+function showDashboard() {
+  document.getElementById('view-landing').style.display = 'none';
+  document.getElementById('wizard-progress-bar').classList.add('hidden');
   document.getElementById('app-main').style.display = 'block';
   document.getElementById('app-main').style.opacity = '1';
+  document.getElementById('app-footer').style.display = 'block';
+  document.querySelectorAll('.wizard-view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-step0').classList.add('active');
+  state.currentStep = 0;
+  // Populate welcome name
+  const firstName = (state.user?.displayName || '').split(' ')[0] || 'Kaibigan';
+  document.getElementById('dashboard-name').textContent = firstName;
+  // Load stats and stories
+  updateDashboardStats();
+  loadDashboardStories();
+}
+
+function showWizard() {
+  document.getElementById('wizard-progress-bar').classList.remove('hidden');
+  document.getElementById('app-main').style.display = 'block';
+  document.getElementById('app-main').style.opacity = '1';
+  updateProgressBar(state.currentStep || 1);
+}
+
+function startNewStory() {
+  document.getElementById('wizard-progress-bar').classList.remove('hidden');
+  document.querySelectorAll('.wizard-view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-step1').classList.add('active');
+  state.currentStep = 1;
   updateProgressBar(1);
+  window.scrollTo(0, 0);
+}
+
+function startWithTemplate(template) {
+  startNewStory();
+  const toneMap = { adventure: 'Adventurous', funny: 'Funny', family: 'Heartwarming', bedtime: 'Gentle' };
+  const tone = toneMap[template] || 'Gentle';
+  // Pre-select tone when user reaches step 2
+  state._pendingTone = tone;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -669,12 +1374,21 @@ async function api(method, endpoint, body) {
 // ═══════════════════════════════════════════════════════════════
 function openModal(mode) {
   state.authMode = mode;
-  document.getElementById('modal-title').textContent = mode === 'register' ? 'Create Free Account' : 'Welcome Back!';
   document.getElementById('modal-btn-text').textContent = mode === 'register' ? 'Create Free Account' : 'Log In';
   document.getElementById('modal-toggle-text').textContent = mode === 'register' ? 'Already have an account?' : "Don't have an account?";
   document.getElementById('modal-toggle-link').textContent = mode === 'register' ? 'Log in here' : 'Sign up free';
   document.getElementById('register-fields').style.display = mode === 'register' ? 'block' : 'none';
   document.getElementById('modal-error').style.display = 'none';
+  // Tab visual states
+  const loginTab = document.getElementById('modal-tab-login');
+  const regTab = document.getElementById('modal-tab-register');
+  if (mode === 'login') {
+    loginTab.className = 'pb-3 text-base font-headline font-bold text-primary border-b-2 border-primary -mb-px transition-all';
+    regTab.className = 'pb-3 text-base font-headline text-on-surface-variant hover:text-primary transition-all';
+  } else {
+    regTab.className = 'pb-3 text-base font-headline font-bold text-primary border-b-2 border-primary -mb-px transition-all';
+    loginTab.className = 'pb-3 text-base font-headline text-on-surface-variant hover:text-primary transition-all';
+  }
   document.getElementById('auth-modal').classList.add('open');
 }
 
@@ -729,7 +1443,8 @@ document.addEventListener('click', e => {
 // WIZARD NAVIGATION
 // ═══════════════════════════════════════════════════════════════
 function goToStep(n) {
-  if (!state.token && n > 1) { openModal('register'); return; }
+  if (n === 0) { showDashboard(); return; }
+  if (!state.token && n > 0) { openModal('register'); return; }
 
   if (n === 2 && !document.getElementById('char-name').value.trim()) {
     alert('Please enter your character\'s name first!');
@@ -739,8 +1454,19 @@ function goToStep(n) {
   document.querySelectorAll('.wizard-view').forEach(v => v.classList.remove('active'));
   document.getElementById(`view-step${n}`).classList.add('active');
   state.currentStep = n;
+  document.getElementById('wizard-progress-bar').classList.remove('hidden');
   updateProgressBar(n);
   window.scrollTo(0, 0);
+
+  // Apply pending template tone when reaching step 2
+  if (n === 2 && state._pendingTone) {
+    setTimeout(() => {
+      document.querySelectorAll('#tone-pills .pill').forEach(p => {
+        p.classList.toggle('selected', p.dataset.value === state._pendingTone);
+      });
+      state._pendingTone = null;
+    }, 50);
+  }
 
   if (n === 3) generateCharacter();
 }
@@ -749,12 +1475,18 @@ function updateProgressBar(step) {
   [1,2,3,4].forEach(i => {
     const dot = document.getElementById(`step-dot-${i}`);
     const lbl = document.getElementById(`step-lbl-${i}`);
-    const con = document.getElementById(`step-con-${i}`);
     dot?.classList.toggle('active', i === step);
     dot?.classList.toggle('done', i < step);
-    lbl?.classList.toggle('active', i === step);
-    if (con) con.classList.toggle('done', i < step);
+    if (lbl) {
+      lbl.classList.toggle('active', i === step);
+    }
   });
+  // Update the progress line fill
+  const fill = document.getElementById('progress-line-fill');
+  if (fill) {
+    const pct = ((step - 1) / 3) * 100;
+    fill.style.width = pct + '%';
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -856,7 +1588,7 @@ async function generateCharacter() {
   if (!name) return;
 
   const resultEl = document.getElementById('character-profile-result');
-  resultEl.innerHTML = '<p style="text-align:center;color:#999;font-family:\'Quicksand\',sans-serif;padding:20px;">Generating character profile...</p>';
+  resultEl.innerHTML = '<div class="flex flex-col items-center justify-center py-16 text-center"><div class="relative w-16 h-16 mb-4"><div class="absolute inset-0 rounded-full border-4 border-primary-container border-t-primary animate-spin"></div></div><p class="font-fun text-lg font-bold text-on-surface">Nilikha ang tauhan...</p></div>';
   document.getElementById('story-gen-section').style.display = 'none';
 
   const interval = showLoading('Nilikha ang tauhan... ✨');
@@ -877,7 +1609,7 @@ async function generateCharacter() {
     document.getElementById('story-gen-section').style.display = 'block';
   } catch (err) {
     hideLoading(interval);
-    resultEl.innerHTML = `<p style="color:#e53e3e;text-align:center;padding:20px;">${escapeHtml(err.message)}</p><div class="btn-row"><button class="btn-ghost" onclick="generateCharacter()">🔄 Try Again</button></div>`;
+    resultEl.innerHTML = `<p style="color:#b33938;text-align:center;padding:20px;font-weight:600;">${escapeHtml(err.message)}</p><div class="btn-row"><button class="btn-ghost" onclick="generateCharacter()">🔄 Try Again</button></div>`;
   }
 }
 
@@ -885,12 +1617,12 @@ function renderCharacterProfile(char) {
   const el = document.getElementById('character-profile-result');
   el.innerHTML = `
     <div id="character-preview" style="margin-bottom:16px;">
-      <h3 style="font-family:'Baloo 2',sans-serif;color:var(--deep-blue);font-size:24px;">${escapeHtml(char.name)}</h3>
-      <p style="font-size:13px;color:#999;font-family:'Quicksand',sans-serif;margin-bottom:12px;">${escapeHtml(char.type)}</p>
-      <p style="margin-bottom:12px;">${escapeHtml(char.personalityDescription)}</p>
-      <p style="margin-bottom:12px;color:#666;">${escapeHtml(char.appearance)}</p>
+      <h3 style="font-family:'Plus Jakarta Sans',sans-serif;color:#3a3a00;font-size:24px;font-weight:800;">${escapeHtml(char.name)}</h3>
+      <p style="font-size:13px;color:#676804;font-family:'Plus Jakarta Sans',sans-serif;margin-bottom:12px;font-weight:600;">${escapeHtml(char.type)}</p>
+      <p style="margin-bottom:12px;color:#3a3a00;">${escapeHtml(char.personalityDescription)}</p>
+      <p style="margin-bottom:12px;color:#676804;">${escapeHtml(char.appearance)}</p>
       <div class="catchphrase-bubble">"${escapeHtml(char.catchphrase)}"${char.catchphraseEnglish ? ` <em style="font-size:13px;opacity:0.7;">(${escapeHtml(char.catchphraseEnglish)})</em>` : ''}</div>
-      <p style="font-size:13px;color:#666;margin-bottom:12px;">🌟 Fun Fact: ${escapeHtml(char.funFact)}</p>
+      <p style="font-size:13px;color:#676804;margin-bottom:12px;">🌟 Fun Fact: ${escapeHtml(char.funFact)}</p>
       ${char.stats ? `
         <div>
           ${Object.entries(char.stats).map(([k, v]) => `
@@ -902,7 +1634,7 @@ function renderCharacterProfile(char) {
       <div style="margin-top:16px;">
         <label class="field-label" style="margin-top:0;">🎨 Character Design Prompt</label>
         <div class="prompt-card"><p class="prompt-text">${escapeHtml(char.designPrompt)}</p></div>
-        <button class="copy-btn" onclick="navigator.clipboard.writeText(this.closest('.prompt-card').previousElementSibling.querySelector('.prompt-text').textContent).then(()=>this.textContent='✅ Copied!')">📋 Copy Prompt</button>
+        <button class="copy-btn mt-2" onclick="navigator.clipboard.writeText(this.closest('div').querySelector('.prompt-text').textContent).then(()=>this.textContent='✅ Copied!')">📋 Copy Prompt</button>
       </div>
     </div>
     <div class="btn-row">
@@ -964,8 +1696,8 @@ function renderBook() {
     <span class="badge badge-coral">${getSelected('age-pills') || '4-6'}</span>`;
 
   document.getElementById('back-cover-summary').innerHTML = `
-    <p style="font-family:'Baloo 2',sans-serif;color:var(--deep-blue);font-size:18px;margin-bottom:8px;">📖 ${escapeHtml(story.title)}</p>
-    <p style="color:#666;">${escapeHtml(story.backCoverSummary || '')}</p>`;
+    <p style="font-family:'Plus Jakarta Sans',sans-serif;color:#3a3a00;font-size:17px;font-weight:700;margin-bottom:8px;">📖 ${escapeHtml(story.title)}</p>
+    <p style="color:#676804;">${escapeHtml(story.backCoverSummary || '')}</p>`;
 
   const pagesEl = document.getElementById('story-pages-container');
   pagesEl.innerHTML = (story.pages || []).map(p => `
@@ -983,7 +1715,7 @@ function renderBook() {
   if (story.moral) {
     const moralEl = document.getElementById('moral-banner');
     moralEl.style.display = 'block';
-    moralEl.innerHTML = `<h3 style="font-family:'Baloo 2',sans-serif;font-size:20px;margin-bottom:8px;">The Moral of the Story</h3>
+    moralEl.innerHTML = `<h3 style="font-family:'Plus Jakarta Sans',sans-serif;font-size:18px;font-weight:800;margin-bottom:8px;">The Moral of the Story</h3>
       <p style="font-size:17px;">${escapeHtml(story.moral)}</p>
       ${story.moralEnglish ? `<p style="opacity:0.85;font-size:14px;margin-top:6px;">${escapeHtml(story.moralEnglish)}</p>` : ''}`;
   }
@@ -1010,8 +1742,8 @@ function renderPrompts() {
   let html = '';
 
   if (story.characterBlueprintPrompt) {
-    html += `<div class="prompt-card" style="border-color:var(--sun-yellow);">
-      <strong style="font-family:'Quicksand',sans-serif;">🎨 Character Blueprint (use for all pages)</strong>
+    html += `<div class="prompt-card" style="border-color:#ac4218;">
+      <strong style="font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;color:#3a3a00;">🎨 Character Blueprint (use for all pages)</strong>
       <p class="prompt-text" style="margin-top:8px;">${escapeHtml(formatPrompt(story.characterBlueprintPrompt))}</p>
       <div class="prompt-actions">
         <button class="copy-btn" onclick="navigator.clipboard.writeText(this.closest('.prompt-card').querySelector('.prompt-text').textContent).then(()=>this.textContent='✅ Copied!')">📋 Copy</button>
@@ -1022,7 +1754,7 @@ function renderPrompts() {
   (story.pages || []).forEach(p => {
     const canGenerate = state.subscription?.imagesPerMonth !== 0;
     html += `<div class="prompt-card">
-      <strong style="font-family:'Quicksand',sans-serif;font-size:13px;">Page ${p.pageNumber}</strong>
+      <strong style="font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;color:#3a3a00;">Page ${p.pageNumber}</strong>
       <p class="prompt-text" style="margin-top:6px;">${escapeHtml(formatPrompt(p.imagePrompt || ''))}</p>
       <div class="prompt-actions">
         <button class="copy-btn" onclick="navigator.clipboard.writeText(this.closest('.prompt-card').querySelector('.prompt-text').textContent).then(()=>this.textContent='✅ Copied!')">📋 Copy</button>
@@ -1043,12 +1775,12 @@ function renderCharacterCard() {
   const char = state.character;
   if (!char) return;
   document.getElementById('character-card-print').innerHTML = `
-    <h2 style="font-family:'Baloo 2',sans-serif;color:var(--deep-blue);text-align:center;">${escapeHtml(char.name)}</h2>
-    <p style="text-align:center;color:#999;font-family:'Quicksand',sans-serif;margin-bottom:12px;">${escapeHtml(char.type)}</p>
+    <h2 style="font-family:'Plus Jakarta Sans',sans-serif;color:#3a3a00;text-align:center;font-size:22px;font-weight:800;">${escapeHtml(char.name)}</h2>
+    <p style="text-align:center;color:#676804;font-family:'Plus Jakarta Sans',sans-serif;margin-bottom:12px;font-size:13px;font-weight:600;">${escapeHtml(char.type)}</p>
     <div class="catchphrase-bubble" style="text-align:center;">"${escapeHtml(char.catchphrase)}"</div>
-    <p style="margin:12px 0;">${escapeHtml(char.personalityDescription)}</p>
-    <p style="color:#666;font-size:14px;">👁️ ${escapeHtml(char.appearance)}</p>
-    <p style="color:#666;font-size:14px;margin-top:8px;">🌟 ${escapeHtml(char.funFact)}</p>
+    <p style="margin:12px 0;color:#3a3a00;">${escapeHtml(char.personalityDescription)}</p>
+    <p style="color:#676804;font-size:14px;">👁️ ${escapeHtml(char.appearance)}</p>
+    <p style="color:#676804;font-size:14px;margin-top:8px;">🌟 ${escapeHtml(char.funFact)}</p>
     ${char.stats ? `<div style="margin-top:12px;">${Object.entries(char.stats).map(([k,v]) => `
       <div class="stat-bar-wrap"><div class="stat-label"><span>${escapeHtml(k)}</span><span>${escapeHtml(v)}%</span></div>
       <div class="stat-bar"><div class="stat-bar-fill" style="width:${escapeHtml(v)}%"></div></div></div>`).join('')}</div>` : ''}`;
@@ -1064,34 +1796,34 @@ function renderDiscussionGuide() {
   document.getElementById('discussion-guide-content').innerHTML = `
     <div class="admin-card">
       <h3>📚 For Parents &amp; Teachers</h3>
-      <p style="font-size:14px;color:#666;margin-bottom:16px;">Use these questions to spark conversation about <em>${escapeHtml(story?.title || 'this story')}</em> with ${escapeHtml(ageRange)}-year-olds.</p>
+      <p style="font-size:14px;color:#676804;margin-bottom:16px;">Use these questions to spark conversation about <em>${escapeHtml(story?.title || 'this story')}</em> with ${escapeHtml(ageRange)}-year-olds.</p>
 
-      <h4 style="font-family:'Quicksand',sans-serif;color:var(--deep-blue);margin-bottom:8px;">Before Reading</h4>
-      <ul style="font-size:14px;color:#555;padding-left:20px;margin-bottom:16px;">
+      <h4 style="font-family:'Plus Jakarta Sans',sans-serif;color:#3a3a00;margin-bottom:8px;font-weight:700;">Before Reading</h4>
+      <ul style="font-size:14px;color:#676804;padding-left:20px;margin-bottom:16px;">
         <li>What do you think this story is about?</li>
         <li>Have you ever met someone like ${escapeHtml(char?.name || 'the character')}?</li>
         <li>What would you do in a ${escapeHtml(getSelected('setting-grid') || 'this')} setting?</li>
       </ul>
 
-      <h4 style="font-family:'Quicksand',sans-serif;color:var(--deep-blue);margin-bottom:8px;">While Reading</h4>
-      <ul style="font-size:14px;color:#555;padding-left:20px;margin-bottom:16px;">
+      <h4 style="font-family:'Plus Jakarta Sans',sans-serif;color:#3a3a00;margin-bottom:8px;font-weight:700;">While Reading</h4>
+      <ul style="font-size:14px;color:#676804;padding-left:20px;margin-bottom:16px;">
         <li>How is ${escapeHtml(char?.name || 'the character')} feeling right now?</li>
         <li>What do you think will happen next?</li>
         <li>Why did ${escapeHtml(char?.name || 'the character')} make that choice?</li>
       </ul>
 
-      <h4 style="font-family:'Quicksand',sans-serif;color:var(--deep-blue);margin-bottom:8px;">After Reading</h4>
-      <ul style="font-size:14px;color:#555;padding-left:20px;margin-bottom:16px;">
+      <h4 style="font-family:'Plus Jakarta Sans',sans-serif;color:#3a3a00;margin-bottom:8px;font-weight:700;">After Reading</h4>
+      <ul style="font-size:14px;color:#676804;padding-left:20px;margin-bottom:16px;">
         <li>What was the most important lesson in this story?</li>
         <li>How can we apply the lesson of <em>${escapeHtml(lesson)}</em> in our daily life?</li>
         <li>If you could add one more page, what would happen?</li>
       </ul>
 
-      ${values === 'Christian' ? `<h4 style="font-family:'Quicksand',sans-serif;color:var(--deep-blue);margin-bottom:8px;">🙏 Prayer Prompt</h4>
-      <p style="font-size:14px;color:#555;margin-bottom:16px;">Let's pray together: "Dear God, help us to be like ${escapeHtml(char?.name || 'our hero')} — ${escapeHtml(char?.personalityDescription?.split('.')[0] || 'brave and kind')}. Amen."</p>` : ''}
+      ${values === 'Christian' ? `<h4 style="font-family:'Plus Jakarta Sans',sans-serif;color:#3a3a00;margin-bottom:8px;font-weight:700;">🙏 Prayer Prompt</h4>
+      <p style="font-size:14px;color:#676804;margin-bottom:16px;">Let's pray together: "Dear God, help us to be like ${escapeHtml(char?.name || 'our hero')} — ${escapeHtml(char?.personalityDescription?.split('.')[0] || 'brave and kind')}. Amen."</p>` : ''}
 
-      <h4 style="font-family:'Quicksand',sans-serif;color:var(--deep-blue);margin-bottom:8px;">🎨 Creative Activity</h4>
-      <p style="font-size:14px;color:#555;">Draw your favorite scene from the story. What colors would you use? What is ${escapeHtml(char?.name || 'the character')} doing?</p>
+      <h4 style="font-family:'Plus Jakarta Sans',sans-serif;color:#3a3a00;margin-bottom:8px;font-weight:700;">🎨 Creative Activity</h4>
+      <p style="font-size:14px;color:#676804;">Draw your favorite scene from the story. What colors would you use? What is ${escapeHtml(char?.name || 'the character')} doing?</p>
     </div>`;
 }
 
@@ -1128,7 +1860,7 @@ async function regeneratePage(pageNum) {
 
 async function generatePageImage(pageNum, prompt) {
   const resultEl = document.getElementById(`img-result-${pageNum}`);
-  resultEl.innerHTML = '<span style="font-size:13px;color:#999;">Generating...</span>';
+  resultEl.innerHTML = '<span style="font-size:13px;color:#676804;">Generating...</span>';
 
   try {
     const data = await api('POST', '/api/generate-image', {
@@ -1137,12 +1869,12 @@ async function generatePageImage(pageNum, prompt) {
       pageIndex: pageNum,
     });
     const img = document.createElement('img');
-    img.style.cssText = 'max-width:100%;border-radius:12px;margin-top:8px;';
+    img.style.cssText = 'max-width:100%;border-radius:1rem;margin-top:8px;';
     img.src = data.imageUrl;
     resultEl.innerHTML = '';
     resultEl.appendChild(img);
   } catch (err) {
-    resultEl.innerHTML = `<span style="color:#e53e3e;font-size:13px;">${escapeHtml(err.message)}</span>`;
+    resultEl.innerHTML = `<span style="color:#b33938;font-size:13px;">${escapeHtml(err.message)}</span>`;
   }
 }
 
@@ -1228,7 +1960,7 @@ async function submitCompile(emailPDF) {
   const template = getSelected('template-pills') || 'Classic';
   document.getElementById('compile-error').style.display = 'none';
 
-  const btn = document.querySelector('#compile-modal .btn-primary');
+  const btn = document.querySelector('#compile-inner .btn-primary');
   btn.disabled = true; btn.textContent = '⏳ Compiling...';
 
   try {
@@ -1279,11 +2011,11 @@ async function loadLibrary() {
     container.innerHTML = `<div class="upgrade-banner"><h3>📚 Save Your Stories</h3><p>Create a free account to save up to 5 stories.</p><button onclick="openModal('register')">Create Free Account</button></div>`;
     return;
   }
-  container.innerHTML = '<p style="text-align:center;color:#999;font-family:\'Quicksand\',sans-serif;">Loading library...</p>';
+  container.innerHTML = '<p style="text-align:center;color:#676804;padding:20px;font-family:\'Plus Jakarta Sans\',sans-serif;font-weight:600;">Loading library...</p>';
   try {
     const data = await api('GET', '/api/library');
     if (!data.stories.length) {
-      container.innerHTML = '<p style="text-align:center;color:#999;padding:20px;font-family:\'Quicksand\',sans-serif;">No saved stories yet. Generate a story and click 💾 Save!</p>';
+      container.innerHTML = '<p style="text-align:center;color:#676804;padding:20px;font-family:\'Plus Jakarta Sans\',sans-serif;">No saved stories yet. Generate a story and click 💾 Save!</p>';
       return;
     }
     container.innerHTML = data.stories.map(s => `
@@ -1302,13 +2034,83 @@ async function loadLibrary() {
         </div>
       </div>`).join('');
   } catch (err) {
-    container.innerHTML = `<p style="color:#e53e3e;text-align:center;">${escapeHtml(err.message)}</p>`;
+    container.innerHTML = `<p style="color:#b33938;text-align:center;font-weight:600;">${escapeHtml(err.message)}</p>`;
+  }
+}
+
+function updateDashboardStats() {
+  const sub = state.subscription || {};
+  const tier = sub.tier || 'free';
+  const tierEl = document.getElementById('stat-tier');
+  if (tierEl) tierEl.textContent = tier.charAt(0).toUpperCase() + tier.slice(1) + ' Plan';
+
+  const todayUsed = sub.todayStoriesUsed || 0;
+  const todayMax = sub.storiesPerDay === -1 ? null : (sub.storiesPerDay || 3);
+  const storiesEl = document.getElementById('stat-stories');
+  const storiesBar = document.getElementById('stat-stories-bar');
+  if (storiesEl) storiesEl.textContent = todayMax ? `${todayUsed} / ${todayMax}` : `${todayUsed} / ∞`;
+  if (storiesBar && todayMax) storiesBar.style.width = Math.min((todayUsed / todayMax) * 100, 100) + '%';
+
+  const imgUsed = sub.imagesThisMonth || 0;
+  const imgMax = sub.imagesPerMonth === -1 ? null : (sub.imagesPerMonth || 0);
+  const imagesEl = document.getElementById('stat-images');
+  const imagesBar = document.getElementById('stat-images-bar');
+  if (imagesEl) imagesEl.textContent = imgMax ? `${imgUsed} / ${imgMax}` : imgMax === null ? `${imgUsed} / ∞` : '0 / 0';
+  if (imagesBar && imgMax) imagesBar.style.width = Math.min((imgUsed / imgMax) * 100, 100) + '%';
+}
+
+async function loadDashboardStories() {
+  const container = document.getElementById('dashboard-recent-stories');
+  if (!container || !state.token) return;
+  try {
+    const data = await api('GET', '/api/library');
+    if (!data.stories.length) {
+      container.innerHTML = `
+        <div class="rounded-xl bg-surface-container-low/50 border border-outline-variant/20 p-12 text-center space-y-4">
+          <span class="text-5xl block">📖</span>
+          <h3 class="font-headline font-bold text-xl text-on-surface">Wala pang kwento</h3>
+          <p class="text-on-surface-variant">I-click ang "Bagong Kwento" para magsimula!</p>
+          <button class="btn-primary inline-flex items-center gap-2 px-8 py-3 mt-2" onclick="startNewStory()">
+            <span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 24;">auto_fix_high</span>
+            Gumawa ng Kwento
+          </button>
+        </div>`;
+      return;
+    }
+    container.innerHTML = `
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        ${data.stories.slice(0, 6).map(s => `
+          <div class="group bg-surface-container-lowest rounded-xl overflow-hidden shadow-whisper-sm hover:shadow-whisper hover:-translate-y-1 transition-all duration-300">
+            <div class="h-28 bg-gradient-to-br from-surface-container to-surface-container-high flex items-center justify-center text-5xl">📖</div>
+            <div class="p-5">
+              <h4 class="font-headline font-bold text-on-surface text-base mb-2 line-clamp-1">${escapeHtml(s.title)}</h4>
+              <div class="flex flex-wrap gap-1.5 mb-3">
+                <span class="badge badge-blue">${escapeHtml(s.language || 'EN')}</span>
+                ${s.character_name ? `<span class="badge badge-green">${escapeHtml(s.character_name)}</span>` : ''}
+                ${s.age_range ? `<span class="badge badge-coral">${escapeHtml(s.age_range)}</span>` : ''}
+              </div>
+              <div class="flex justify-between items-center pt-3 border-t border-surface-container">
+                <span class="text-xs text-on-surface-variant font-label">${new Date(s.created_at).toLocaleDateString('en-PH')}</span>
+                <button class="text-error hover:opacity-70 transition-opacity text-sm" onclick="deleteStory(${s.id},this)">
+                  <span class="material-symbols-outlined text-base">delete</span>
+                </button>
+              </div>
+            </div>
+          </div>`).join('')}
+      </div>`;
+  } catch {
+    container.innerHTML = '<p class="text-center text-on-surface-variant py-8">Hindi ma-load ang mga kwento.</p>';
   }
 }
 
 function showLibrary() {
   document.getElementById('user-dropdown').classList.remove('open');
   if (state.currentStep === 4) { switchTab('library'); return; }
+  if (state.currentStep === 0) {
+    startNewStory();
+    setTimeout(() => { goToStep(4); setTimeout(() => switchTab('library'), 100); }, 100);
+    return;
+  }
   goToStep(4);
   setTimeout(() => switchTab('library'), 100);
 }
@@ -1335,8 +2137,9 @@ let adminToken = localStorage.getItem('kk_admin_token');
 
 async function initAdmin() {
   document.getElementById('app-main').style.display = 'none';
-  document.getElementById('wizard-progress').style.display = 'none';
-  document.getElementById('admin-view').classList.add('active');
+  document.getElementById('app-footer').style.display = 'none';
+  const adminView = document.getElementById('admin-view');
+  adminView.style.display = 'block';
 
   if (!adminToken) {
     const email = prompt('Admin email:');
@@ -1369,7 +2172,7 @@ async function adminApi(method, endpoint, body) {
 
 function showAdminTab(name, event) {
   document.querySelectorAll('#admin-nav .pill').forEach(p => p.classList.remove('selected'));
-  event.target.classList.add('selected');
+  event.target.closest('.pill').classList.add('selected');
   document.querySelectorAll('.admin-section').forEach(s => s.style.display = 'none');
   document.getElementById(`admin-${name}`).style.display = 'block';
 
@@ -1380,42 +2183,84 @@ function showAdminTab(name, event) {
   else if (name === 'settings') loadAdminSettings();
 }
 
+function showAdminTabMobile(name) {
+  document.querySelectorAll('.admin-section').forEach(s => s.style.display = 'none');
+  document.getElementById(`admin-${name}`).style.display = 'block';
+  if (name === 'overview') loadAdminOverview();
+  else if (name === 'ai-settings') loadAdminAISettings();
+  else if (name === 'users') loadAdminUsers();
+  else if (name === 'promo') loadAdminPromo();
+  else if (name === 'settings') loadAdminSettings();
+}
+
 async function loadAdminOverview() {
   const el = document.getElementById('admin-overview');
-  el.innerHTML = '<p style="text-align:center;color:#999;padding:20px;">Loading...</p>';
+  el.innerHTML = '<p style="text-align:center;color:#676804;padding:20px;font-weight:600;">Loading...</p>';
   const data = await adminApi('GET', '/api/admin/overview');
   el.innerHTML = `
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6">
+      <div class="bg-white rounded-xl p-6 shadow-whisper-sm">
+        <div class="flex items-center justify-between mb-3">
+          <span class="p-2.5 bg-secondary-container text-on-secondary-container rounded-xl material-symbols-outlined">group</span>
+          <span class="text-tertiary font-bold text-sm font-label">Users</span>
+        </div>
+        <p class="text-3xl font-extrabold font-headline text-on-surface">${data.users?.total || 0}</p>
+        <p class="text-on-surface-variant text-xs font-label uppercase tracking-wider mt-1">Total Registered</p>
+      </div>
+      <div class="bg-white rounded-xl p-6 shadow-whisper-sm">
+        <div class="flex items-center justify-between mb-3">
+          <span class="p-2.5 bg-primary-container text-on-primary-container rounded-xl material-symbols-outlined">auto_stories</span>
+          <span class="text-tertiary font-bold text-sm font-label">Today</span>
+        </div>
+        <p class="text-3xl font-extrabold font-headline text-on-surface">${data.todayStories || 0}</p>
+        <p class="text-on-surface-variant text-xs font-label uppercase tracking-wider mt-1">Stories Generated</p>
+      </div>
+      <div class="bg-white rounded-xl p-6 shadow-whisper-sm">
+        <div class="flex items-center justify-between mb-3">
+          <span class="p-2.5 bg-tertiary-container text-on-tertiary-container rounded-xl material-symbols-outlined">image</span>
+        </div>
+        <p class="text-3xl font-extrabold font-headline text-on-surface">${data.todayImages || 0}</p>
+        <p class="text-on-surface-variant text-xs font-label uppercase tracking-wider mt-1">Images Generated</p>
+      </div>
+    </div>
+
     <div class="admin-card">
-      <h3>Users</h3>
+      <h3>User Breakdown</h3>
       <div class="stat-grid">
-        <div class="stat-item"><div class="number">${data.users?.total || 0}</div><div class="label">Total</div></div>
         <div class="stat-item"><div class="number">${data.users?.free || 0}</div><div class="label">Free</div></div>
         <div class="stat-item"><div class="number">${data.users?.pro || 0}</div><div class="label">Pro</div></div>
         <div class="stat-item"><div class="number">${data.users?.business || 0}</div><div class="label">Business</div></div>
         <div class="stat-item"><div class="number">${data.users?.tester || 0}</div><div class="label">Testers</div></div>
       </div>
     </div>
-    <div class="admin-card">
-      <h3>Activity Today</h3>
-      <div class="stat-grid">
-        <div class="stat-item"><div class="number">${data.todayStories || 0}</div><div class="label">Stories</div></div>
-        <div class="stat-item"><div class="number">${data.todayImages || 0}</div><div class="label">Images</div></div>
-        <div class="stat-item"><div class="number">${data.todayCompiles || 0}</div><div class="label">Compilations</div></div>
-        <div class="stat-item"><div class="number">${data.pendingOdooSync || 0}</div><div class="label">Pending Sync</div></div>
-      </div>
-    </div>
+
     <div class="admin-card">
       <h3>System Status</h3>
-      <p style="font-size:14px;">Odoo Primary: <strong>${escapeHtml(data.odoo?.primary || 'unknown')}</strong> | Secondary: <strong>${escapeHtml(data.odoo?.secondary || 'unknown')}</strong></p>
-      <p style="font-size:14px;">Active: <strong>${escapeHtml(data.odoo?.active || 'none')}</strong> | Failovers: ${data.odoo?.failoverCount || 0}</p>
-      <p style="font-size:14px;margin-top:8px;">Text AI: <strong>${escapeHtml(data.ai?.textProvider)} / ${escapeHtml(data.ai?.textModel)}</strong></p>
-      <p style="font-size:14px;">Image AI: <strong>${escapeHtml(data.ai?.imageProvider)} / ${escapeHtml(data.ai?.imageModel)}</strong></p>
+      <div class="grid grid-cols-2 gap-3">
+        <div class="bg-surface-container-low rounded-xl p-3">
+          <p class="text-xs font-label uppercase tracking-wider text-on-surface-variant mb-1">Odoo Primary</p>
+          <p class="font-semibold text-on-surface">${escapeHtml(data.odoo?.primary || 'unknown')}</p>
+        </div>
+        <div class="bg-surface-container-low rounded-xl p-3">
+          <p class="text-xs font-label uppercase tracking-wider text-on-surface-variant mb-1">Active Instance</p>
+          <p class="font-semibold text-on-surface">${escapeHtml(data.odoo?.active || 'none')}</p>
+        </div>
+        <div class="bg-surface-container-low rounded-xl p-3">
+          <p class="text-xs font-label uppercase tracking-wider text-on-surface-variant mb-1">Text AI</p>
+          <p class="font-semibold text-on-surface text-sm">${escapeHtml(data.ai?.textProvider)} / ${escapeHtml(data.ai?.textModel)}</p>
+        </div>
+        <div class="bg-surface-container-low rounded-xl p-3">
+          <p class="text-xs font-label uppercase tracking-wider text-on-surface-variant mb-1">Image AI</p>
+          <p class="font-semibold text-on-surface text-sm">${escapeHtml(data.ai?.imageProvider)} / ${escapeHtml(data.ai?.imageModel)}</p>
+        </div>
+      </div>
+      <p style="font-size:13px;color:#676804;margin-top:12px;">Pending Sync: <strong>${data.pendingOdooSync || 0}</strong> | Failovers: <strong>${data.odoo?.failoverCount || 0}</strong></p>
     </div>`;
 }
 
 async function loadAdminAISettings() {
   const el = document.getElementById('admin-ai-settings');
-  el.innerHTML = '<p style="text-align:center;color:#999;padding:20px;">Loading...</p>';
+  el.innerHTML = '<p style="text-align:center;color:#676804;padding:20px;font-weight:600;">Loading...</p>';
   const data = await adminApi('GET', '/api/admin/ai-settings');
 
   const renderProviders = (feature, providers) => {
@@ -1425,16 +2270,16 @@ async function loadAdminAISettings() {
       ${providers.map(p => `
         <div class="provider-card ${p.is_active ? 'active-provider' : ''}">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-            <strong style="font-family:'Quicksand',sans-serif;">${escapeHtml(p.provider).toUpperCase()}</strong>
+            <strong style="font-family:'Plus Jakarta Sans',sans-serif;font-size:15px;font-weight:800;">${escapeHtml(p.provider).toUpperCase()}</strong>
             ${p.is_active ? '<span class="badge badge-green">ACTIVE</span>' :
               `<button class="btn-ghost" style="font-size:12px;padding:4px 10px;" onclick="switchProvider('${escapeHtml(feature)}','${escapeHtml(p.provider)}')">Set Active</button>`}
           </div>
-          <p style="font-size:13px;color:#666;">🔑 Key: ${escapeHtml(p.api_key_hint || 'Not set')} | 🤖 Model: ${escapeHtml(p.model)}</p>
-          <p style="font-size:13px;color:#666;">
+          <p style="font-size:13px;color:#676804;margin-bottom:4px;">🔑 Key: ${escapeHtml(p.api_key_hint || 'Not set')} | 🤖 Model: ${escapeHtml(p.model)}</p>
+          <p style="font-size:13px;color:#676804;margin-bottom:10px;">
             ${p.last_test_ok === true ? '✅' : p.last_test_ok === false ? '❌' : '⚪'}
             ${escapeHtml(p.last_test_msg || 'Never tested')}
           </p>
-          <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center;">
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
             <button class="copy-btn" onclick="testAIProvider('${escapeHtml(feature)}','${escapeHtml(p.provider)}')">▶ Test</button>
             <button class="copy-btn" onclick="promptUpdateKey('${escapeHtml(feature)}','${escapeHtml(p.provider)}')">✏️ Update Key</button>
             <button class="copy-btn" onclick="promptUpdateModel('${escapeHtml(feature)}','${escapeHtml(p.provider)}','${escapeHtml(p.model)}')">🤖 Change Model</button>
@@ -1582,14 +2427,14 @@ async function loadAdminSettings() {
   el.innerHTML = `<div class="admin-card">
     <h3>System Settings</h3>
     <label class="field-label">Maintenance Mode</label>
-    <select id="s-maintenance" style="margin-bottom:12px;">
+    <select id="s-maintenance" style="border-radius:1rem;margin-bottom:12px;">
       <option value="false" ${data.maintenance_mode!=='true'?'selected':''}>Off</option>
       <option value="true" ${data.maintenance_mode==='true'?'selected':''}>On</option>
     </select>
     <label class="field-label">Maintenance Message</label>
     <input type="text" id="s-msg" value="${escapeHtml(data.maintenance_message||'')}" style="margin-bottom:12px;" />
     <label class="field-label">Lifetime Plan Available</label>
-    <select id="s-lifetime" style="margin-bottom:12px;">
+    <select id="s-lifetime" style="border-radius:1rem;margin-bottom:12px;">
       <option value="true" ${data.lifetime_plan_active!=='false'?'selected':''}>Yes</option>
       <option value="false" ${data.lifetime_plan_active==='false'?'selected':''}>No</option>
     </select>
