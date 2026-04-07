@@ -1762,13 +1762,31 @@ function renderPrompts() {
   if (!story) return;
   const isMJ = getSelected('prompt-style-pills') === 'midjourney';
   const formatPrompt = p => isMJ ? p + ' --ar 16:9 --style raw --v 6' : p;
+  const canGenerate = state.subscription?.imagesPerMonth !== 0;
 
   const container = document.getElementById('prompts-container');
   let html = '';
 
+  // ── Generate All button ──
+  if (canGenerate && (story.pages || []).length > 0) {
+    const total = story.pages.length;
+    html += `
+      <div class="bg-surface-container-low rounded-xl p-4 mb-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <div>
+          <p class="font-label font-bold text-sm text-on-surface">✨ Generate All Page Images</p>
+          <p class="text-xs text-on-surface-variant mt-0.5">Character blueprint is automatically applied to every page for consistency.</p>
+        </div>
+        <button id="generate-all-btn" class="btn-primary flex-shrink-0 flex items-center gap-2 py-2.5 px-5 text-sm" onclick="generateAllImages()">
+          <span class="material-symbols-outlined text-base" style="font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 20;">auto_fix_high</span>
+          Generate All ${total} Pages
+        </button>
+      </div>`;
+  }
+
+  // ── Character blueprint card ──
   if (story.characterBlueprintPrompt) {
     html += `<div class="prompt-card" style="border-color:#ac4218;">
-      <strong style="font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;color:#3a3a00;">🎨 Character Blueprint (use for all pages)</strong>
+      <strong style="font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;color:#3a3a00;">🎨 Character Blueprint — applied to every generated image</strong>
       <p class="prompt-text" style="margin-top:8px;">${escapeHtml(formatPrompt(story.characterBlueprintPrompt))}</p>
       <div class="prompt-actions">
         <button class="copy-btn" onclick="navigator.clipboard.writeText(this.closest('.prompt-card').querySelector('.prompt-text').textContent).then(()=>this.textContent='✅ Copied!')">📋 Copy</button>
@@ -1776,20 +1794,20 @@ function renderPrompts() {
     </div>`;
   }
 
+  // ── Per-page prompt cards ──
   (story.pages || []).forEach(p => {
-    const canGenerate = state.subscription?.imagesPerMonth !== 0;
-    html += `<div class="prompt-card">
+    html += `<div class="prompt-card" id="prompt-card-${p.pageNumber}">
       <strong style="font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;color:#3a3a00;">Page ${p.pageNumber}</strong>
       <p class="prompt-text" style="margin-top:6px;">${escapeHtml(formatPrompt(p.imagePrompt || ''))}</p>
       <div class="prompt-actions">
         <button class="copy-btn" onclick="navigator.clipboard.writeText(this.closest('.prompt-card').querySelector('.prompt-text').textContent).then(()=>this.textContent='✅ Copied!')">📋 Copy</button>
-        ${canGenerate ? `<button class="btn-ghost" style="font-size:13px;padding:6px 14px;" onclick="generatePageImage(${p.pageNumber}, this.closest('.prompt-card').querySelector('.prompt-text').textContent)">✨ Generate Image</button>` : ''}
-        <div id="img-result-${p.pageNumber}"></div>
+        ${canGenerate ? `<button class="btn-ghost" style="font-size:13px;padding:6px 14px;" id="gen-btn-${p.pageNumber}" onclick="generatePageImage(${p.pageNumber})">✨ Generate</button>` : ''}
       </div>
+      <div id="img-result-${p.pageNumber}" class="mt-2"></div>
     </div>`;
   });
 
-  if (!state.subscription || state.subscription.imagesPerMonth === 0) {
+  if (!canGenerate) {
     html += `<div class="upgrade-banner"><h3>✨ Generate Images In-App</h3><p>Upgrade to Pro to generate images directly inside Kwento Ko.</p><button onclick="openModal('register')">Upgrade to Pro</button></div>`;
   }
 
@@ -1883,23 +1901,116 @@ async function regeneratePage(pageNum) {
   }
 }
 
-async function generatePageImage(pageNum, prompt) {
+function buildImagePrompt(pageNum) {
+  const story = state.story;
+  const page = story?.pages?.find(p => p.pageNumber === pageNum);
+  const blueprint = story?.characterBlueprintPrompt || '';
+  const scene = page?.imagePrompt || '';
+  // Always prepend blueprint so every image uses the same character reference
+  return blueprint ? `${blueprint}. Scene: ${scene}` : scene;
+}
+
+async function generatePageImage(pageNum) {
   const resultEl = document.getElementById(`img-result-${pageNum}`);
-  resultEl.innerHTML = '<span style="font-size:13px;color:#676804;">Generating...</span>';
+  const btn = document.getElementById(`gen-btn-${pageNum}`);
+  if (!resultEl) return;
+
+  resultEl.innerHTML = `<div class="flex items-center gap-2 mt-2 text-sm text-on-surface-variant">
+    <div class="w-4 h-4 rounded-full border-2 border-primary-container border-t-primary animate-spin flex-shrink-0"></div>
+    Generating page ${pageNum}...
+  </div>`;
+  if (btn) { btn.disabled = true; btn.textContent = '⏳'; }
 
   try {
     const data = await api('POST', '/api/generate-image', {
-      promptText: prompt,
+      promptText: buildImagePrompt(pageNum),
       storyId: state.savedStoryId,
       pageIndex: pageNum,
     });
-    const img = document.createElement('img');
-    img.style.cssText = 'max-width:100%;border-radius:1rem;margin-top:8px;';
-    img.src = data.imageUrl;
     resultEl.innerHTML = '';
+    const img = document.createElement('img');
+    img.style.cssText = 'max-width:100%;border-radius:1rem;margin-top:8px;display:block;';
+    img.src = data.imageUrl;
     resultEl.appendChild(img);
+    // Regenerate button
+    const regenBtn = document.createElement('button');
+    regenBtn.className = 'btn-ghost mt-2';
+    regenBtn.style.cssText = 'font-size:12px;padding:5px 12px;';
+    regenBtn.textContent = '🔄 Regenerate';
+    regenBtn.onclick = () => generatePageImage(pageNum);
+    resultEl.appendChild(regenBtn);
   } catch (err) {
-    resultEl.innerHTML = `<span style="color:#b33938;font-size:13px;">${escapeHtml(err.message)}</span>`;
+    resultEl.innerHTML = `<p style="color:#b33938;font-size:13px;margin-top:6px;">${escapeHtml(err.message)}</p>`;
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '✨ Generate'; }
+  }
+}
+
+async function generateAllImages() {
+  const story = state.story;
+  if (!story?.pages?.length) return;
+
+  const allBtn = document.getElementById('generate-all-btn');
+  const pages = story.pages;
+  const total = pages.length;
+  let done = 0;
+  let failed = 0;
+
+  if (allBtn) { allBtn.disabled = true; }
+
+  for (const p of pages) {
+    if (allBtn) allBtn.textContent = `Generating ${done + 1}/${total}...`;
+
+    const resultEl = document.getElementById(`img-result-${p.pageNumber}`);
+    const btn = document.getElementById(`gen-btn-${p.pageNumber}`);
+    if (resultEl) {
+      resultEl.innerHTML = `<div class="flex items-center gap-2 mt-2 text-sm text-on-surface-variant">
+        <div class="w-4 h-4 rounded-full border-2 border-primary-container border-t-primary animate-spin flex-shrink-0"></div>
+        Generating...
+      </div>`;
+    }
+    if (btn) { btn.disabled = true; btn.textContent = '⏳'; }
+
+    try {
+      const data = await api('POST', '/api/generate-image', {
+        promptText: buildImagePrompt(p.pageNumber),
+        storyId: state.savedStoryId,
+        pageIndex: p.pageNumber,
+      });
+      if (resultEl) {
+        resultEl.innerHTML = '';
+        const img = document.createElement('img');
+        img.style.cssText = 'max-width:100%;border-radius:1rem;margin-top:8px;display:block;';
+        img.src = data.imageUrl;
+        resultEl.appendChild(img);
+        const regenBtn = document.createElement('button');
+        regenBtn.className = 'btn-ghost mt-2';
+        regenBtn.style.cssText = 'font-size:12px;padding:5px 12px;';
+        regenBtn.textContent = '🔄 Regenerate';
+        regenBtn.onclick = () => generatePageImage(p.pageNumber);
+        resultEl.appendChild(regenBtn);
+      }
+      done++;
+    } catch (err) {
+      if (resultEl) {
+        resultEl.innerHTML = `<p style="color:#b33938;font-size:13px;margin-top:6px;">Failed: ${escapeHtml(err.message)}</p>`;
+      }
+      failed++;
+    }
+
+    if (btn) { btn.disabled = false; btn.textContent = '✨ Generate'; }
+    // Brief pause between requests to stay within rate limits
+    if (p !== pages[pages.length - 1]) await new Promise(r => setTimeout(r, 800));
+  }
+
+  if (allBtn) {
+    allBtn.disabled = false;
+    allBtn.textContent = failed > 0
+      ? `✅ Done — ${done} generated, ${failed} failed`
+      : `✅ All ${done} pages generated`;
+    setTimeout(() => {
+      if (allBtn) allBtn.textContent = `Generate All ${total} Pages`;
+    }, 4000);
   }
 }
 
