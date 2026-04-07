@@ -2305,7 +2305,7 @@ async function loadAdminAISettings() {
             ${escapeHtml(p.last_test_msg || 'Never tested')}
           </p>
           <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-            <button class="copy-btn" onclick="testAIProvider('${escapeHtml(feature)}','${escapeHtml(p.provider)}')">▶ Test</button>
+            <button class="copy-btn" onclick="testAIProvider('${escapeHtml(feature)}','${escapeHtml(p.provider)}','${escapeHtml(p.model)}')">▶ Test</button>
             <button class="copy-btn" onclick="promptUpdateKey('${escapeHtml(feature)}','${escapeHtml(p.provider)}')">✏️ Update Key</button>
             <button class="copy-btn" onclick="promptUpdateModel('${escapeHtml(feature)}','${escapeHtml(p.provider)}','${escapeHtml(p.model)}')">🤖 Change Model</button>
           </div>
@@ -2318,10 +2318,11 @@ async function loadAdminAISettings() {
                  renderProviders('compile', data.compile || []);
 }
 
-async function testAIProvider(feature, provider) {
-  if (!confirm(`Test ${provider} for ${feature}?`)) return;
-  const data = await adminApi('POST', '/api/admin/ai-settings/test', { feature, provider, apiKey: '__USE_STORED__' });
-  alert(`${data.ok ? '✅' : '❌'} ${data.message} (${data.latencyMs}ms)`);
+async function testAIProvider(feature, provider, model) {
+  const label = model ? `${provider} / ${model}` : provider;
+  if (!confirm(`Test ${label} for ${feature}?`)) return;
+  const data = await adminApi('POST', '/api/admin/ai-settings/test', { feature, provider, apiKey: '__USE_STORED__', model: model || undefined });
+  alert(`${data.ok ? '✅' : '❌'} ${data.message}\nModel: ${data.model || model || 'stored'} (${data.latencyMs}ms)`);
   loadAdminAISettings();
 }
 

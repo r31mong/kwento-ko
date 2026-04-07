@@ -543,10 +543,26 @@ class AISettingsManager {
       if (provider === 'gemini') {
         const { GoogleGenerativeAI } = require('@google/generative-ai');
         const genAI = new GoogleGenerativeAI(key);
-        const m = genAI.getGenerativeModel({ model: model || 'gemini-2.0-flash' });
-        const result = await m.generateContent('Reply with exactly one word: OK');
-        const text = result.response.text();
-        if (!text.includes('OK')) throw new Error('Unexpected response: ' + text);
+
+        if (feature === 'image') {
+          // Image models (Imagen / gemini-*-image) don't accept plain text prompts.
+          // Verify auth using a cheap text model — same API key covers all features.
+          const authModel = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-lite' });
+          const authResult = await authModel.generateContent('Reply with exactly one word: OK');
+          const authText = authResult.response.text();
+          if (!authText.includes('OK')) throw new Error('API key invalid');
+          // Report which image model is configured without running a full generation.
+          const latencyMs = Date.now() - start;
+          db.prepare(`UPDATE ai_provider_settings SET last_tested_at = CURRENT_TIMESTAMP, last_test_ok = 1, last_test_msg = ? WHERE feature = ? AND provider = ?`)
+            .run(`API key valid. Image model: ${model} (key checked in ${latencyMs}ms)`, feature, provider);
+          return { ok: true, latencyMs, message: `API key valid. Image model ready: ${model}`, model };
+        } else {
+          // Text / compile — test the exact configured model
+          const m = genAI.getGenerativeModel({ model: model || 'gemini-2.0-flash' });
+          const result = await m.generateContent('Reply with exactly one word: OK');
+          const text = result.response.text();
+          if (!text.includes('OK')) throw new Error('Unexpected response: ' + text);
+        }
       } else if (provider === 'openrouter') {
         const resp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
           method: 'POST',
@@ -615,8 +631,15 @@ app.get('/api/admin/ai-settings', adminMiddleware, (req, res) => {
 });
 
 app.post('/api/admin/ai-settings/test', adminMiddleware, adminAiRateLimit, async (req, res) => {
-  const { feature, provider, apiKey, model, extraConfig } = req.body;
+  const { feature, provider, apiKey, model: reqModel, extraConfig } = req.body;
   if (!feature || !provider) return res.status(400).json({ error: 'feature and provider required' });
+
+  // Always use the stored model if the caller didn't pass one explicitly
+  let model = reqModel;
+  if (!model) {
+    const row = db.prepare('SELECT model FROM ai_provider_settings WHERE feature = ? AND provider = ?').get(feature, provider);
+    model = row?.model || undefined;
+  }
 
   db.prepare(`
     INSERT INTO ai_key_audit_log (feature, provider, action, result, admin_email, ip_address)
