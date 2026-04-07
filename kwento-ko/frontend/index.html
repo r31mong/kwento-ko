@@ -937,31 +937,47 @@
         <div class="pills" id="lesson-pills"></div>
       </div>
 
-      <!-- Options -->
-      <div class="bg-surface-container-lowest rounded-xl p-6 shadow-whisper-sm space-y-4">
-        <label class="flex items-center gap-3 cursor-pointer group">
-          <input type="checkbox" id="cause-effect-toggle" checked class="rounded text-primary focus:ring-primary w-4 h-4 flex-shrink-0" style="width:auto;" />
+      <!-- Language -->
+      <div class="bg-surface-container-lowest rounded-xl p-6 shadow-whisper-sm space-y-3">
+        <label class="field-label">Primary Language</label>
+        <div class="pills" id="lang-pills">
+          <div class="pill selected" data-value="English" onclick="selectPill(this,'lang-pills');updateBilingualState()">English</div>
+          <div class="pill" data-value="Filipino" onclick="selectPill(this,'lang-pills');updateBilingualState()">Filipino</div>
+          <div class="pill" data-value="Cebuano" onclick="selectPill(this,'lang-pills');updateBilingualState()">Cebuano</div>
+          <div class="pill" data-value="Ilocano" onclick="selectPill(this,'lang-pills');updateBilingualState()">Ilocano</div>
+          <div class="pill" data-value="Taglish" onclick="selectPill(this,'lang-pills');updateBilingualState()">Taglish</div>
+        </div>
+      </div>
+
+      <!-- Story Options -->
+      <div class="bg-surface-container-lowest rounded-xl p-6 shadow-whisper-sm space-y-3">
+        <label class="field-label">Story Options</label>
+
+        <!-- Cause & Effect toggle -->
+        <div class="flex items-center justify-between gap-4 bg-surface-container rounded-xl px-4 py-3.5 cursor-pointer" onclick="document.getElementById('cause-effect-toggle').click()">
           <div>
-            <span class="font-label font-semibold text-sm text-on-surface">Cause &amp; Effect</span>
+            <p class="font-label font-semibold text-sm text-on-surface">⚡ Cause &amp; Effect</p>
             <p class="text-xs text-on-surface-variant mt-0.5">Show a gentle wrong choice + consequence + resolution on one page</p>
           </div>
-        </label>
-
-        <div>
-          <label class="field-label">Primary Language</label>
-          <div class="pills" id="lang-pills">
-            <div class="pill selected" data-value="English" onclick="selectPill(this,'lang-pills');updateBilingualState()">English</div>
-            <div class="pill" data-value="Filipino" onclick="selectPill(this,'lang-pills');updateBilingualState()">Filipino</div>
-            <div class="pill" data-value="Cebuano" onclick="selectPill(this,'lang-pills');updateBilingualState()">Cebuano</div>
-            <div class="pill" data-value="Ilocano" onclick="selectPill(this,'lang-pills');updateBilingualState()">Ilocano</div>
-            <div class="pill" data-value="Taglish" onclick="selectPill(this,'lang-pills');updateBilingualState()">Taglish</div>
-          </div>
+          <label class="relative inline-flex items-center cursor-pointer flex-shrink-0" onclick="event.stopPropagation()">
+            <input type="checkbox" id="cause-effect-toggle" checked class="sr-only peer" />
+            <div class="w-11 h-6 bg-surface-container-highest rounded-full peer peer-checked:bg-primary transition-colors peer-focus:ring-2 peer-focus:ring-primary/40"></div>
+            <div class="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform peer-checked:translate-x-5"></div>
+          </label>
         </div>
 
-        <label class="flex items-center gap-3 cursor-pointer">
-          <input type="checkbox" id="bilingual-toggle" class="rounded text-primary focus:ring-primary w-4 h-4 flex-shrink-0" style="width:auto;" />
-          <span class="font-label font-semibold text-sm text-on-surface">Add English translation (bilingual mode)</span>
-        </label>
+        <!-- Bilingual toggle -->
+        <div class="flex items-center justify-between gap-4 bg-surface-container rounded-xl px-4 py-3.5 cursor-pointer" onclick="document.getElementById('bilingual-toggle').click()" id="bilingual-row">
+          <div>
+            <p class="font-label font-semibold text-sm text-on-surface">🌐 Add English Translation</p>
+            <p class="text-xs text-on-surface-variant mt-0.5">Bilingual mode — shows original language + English side by side</p>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer flex-shrink-0" onclick="event.stopPropagation()">
+            <input type="checkbox" id="bilingual-toggle" class="sr-only peer" />
+            <div class="w-11 h-6 bg-surface-container-highest rounded-full peer peer-checked:bg-primary transition-colors peer-focus:ring-2 peer-focus:ring-primary/40"></div>
+            <div class="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform peer-checked:translate-x-5"></div>
+          </label>
+        </div>
       </div>
 
       <div class="btn-row">
@@ -1552,8 +1568,17 @@ function updateLessons() {
 function updateBilingualState() {
   const lang = getSelected('lang-pills');
   const bilingualToggle = document.getElementById('bilingual-toggle');
-  if (lang === 'English') { bilingualToggle.checked = true; bilingualToggle.disabled = true; }
-  else { bilingualToggle.disabled = false; }
+  const bilingualRow = document.getElementById('bilingual-row');
+  if (lang === 'English') {
+    bilingualToggle.checked = true;
+    bilingualToggle.disabled = true;
+    if (bilingualRow) bilingualRow.style.opacity = '0.5';
+    if (bilingualRow) bilingualRow.style.pointerEvents = 'none';
+  } else {
+    bilingualToggle.disabled = false;
+    if (bilingualRow) bilingualRow.style.opacity = '1';
+    if (bilingualRow) bilingualRow.style.pointerEvents = '';
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -2315,24 +2340,35 @@ async function promptUpdateKey(feature, provider) {
 }
 
 async function promptUpdateModel(feature, provider, currentModel) {
-  const GEMINI_MODELS = [
-    'gemini-2.0-flash',
-    'gemini-2.0-flash-lite',
+  const GEMINI_TEXT_MODELS = [
+    'gemini-3.1-flash-lite',           // ★ recommended default
+    'gemini-3.1-flash-lite-preview',
+    'gemini-3.1-pro-preview',
+    'gemini-2.5-pro',
+    'gemini-2.5-flash-lite',
     'gemini-2.5-flash-preview-04-17',
     'gemini-2.5-pro-preview-03-25',
+    'gemini-2.0-flash',
+    'gemini-2.0-flash-lite',
     'gemini-1.5-flash',
     'gemini-1.5-flash-8b',
     'gemini-1.5-pro',
   ];
+  const GEMINI_IMAGE_MODELS = [
+    'gemini-3.1-flash-image-preview',  // ★ recommended default
+    'gemini-2.5-flash-image',
+    'nano-banana-pro-preview',
+  ];
 
   let model;
   if (provider === 'gemini') {
-    const options = GEMINI_MODELS.map((m, i) => `${i + 1}. ${m}${m === currentModel ? ' (current)' : ''}`).join('\n');
-    const input = prompt(`Select Gemini model for ${feature}:\n\n${options}\n\nEnter number or type a model name:`);
+    const modelList = feature === 'image' ? GEMINI_IMAGE_MODELS : GEMINI_TEXT_MODELS;
+    const options = modelList.map((m, i) => `${i + 1}. ${m}${m === currentModel ? ' ← current' : ''}${i === 0 ? ' ★' : ''}`).join('\n');
+    const input = prompt(`Select Gemini model for ${feature}:\n\n${options}\n\nEnter number or type a custom model name:`);
     if (!input) return;
     const idx = parseInt(input, 10);
-    model = (!isNaN(idx) && idx >= 1 && idx <= GEMINI_MODELS.length)
-      ? GEMINI_MODELS[idx - 1]
+    model = (!isNaN(idx) && idx >= 1 && idx <= modelList.length)
+      ? modelList[idx - 1]
       : input.trim();
   } else {
     model = prompt(`Enter model name for ${provider} (${feature}):\nCurrent: ${currentModel}`);
