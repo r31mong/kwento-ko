@@ -236,13 +236,16 @@ function keyHint(raw) {
 const seedProviders = [
   { feature: 'text',    provider: 'gemini',      model: process.env.GEMINI_TEXT_MODEL || 'gemini-2.0-flash',                     key: process.env.GEMINI_API_KEY,      active: (process.env.TEXT_AI_PROVIDER || 'gemini') === 'gemini' },
   { feature: 'text',    provider: 'openrouter',  model: process.env.OPENROUTER_TEXT_MODEL || 'meta-llama/llama-3.1-70b-instruct', key: process.env.OPENROUTER_API_KEY,  active: process.env.TEXT_AI_PROVIDER === 'openrouter' },
-  { feature: 'text',    provider: 'ollama',      model: process.env.OLLAMA_TEXT_MODEL || 'qwen2.5:7b',                            key: null,                             active: process.env.TEXT_AI_PROVIDER === 'ollama',   extra: JSON.stringify({ host: process.env.OLLAMA_HOST }) },
+  { feature: 'text',    provider: 'ollama',       model: process.env.OLLAMA_TEXT_MODEL || 'qwen2.5:7b',                            key: null,                                  active: process.env.TEXT_AI_PROVIDER === 'ollama',        extra: JSON.stringify({ host: process.env.OLLAMA_HOST || 'http://localhost:11434' }) },
+  { feature: 'text',    provider: 'ollama_cloud', model: process.env.OLLAMA_CLOUD_TEXT_MODEL || 'qwen2.5:7b',                       key: process.env.OLLAMA_CLOUD_API_KEY,      active: process.env.TEXT_AI_PROVIDER === 'ollama_cloud' },
   { feature: 'image',   provider: 'gemini',      model: process.env.GEMINI_IMAGE_MODEL || 'imagen-3.0-generate-002',             key: process.env.GEMINI_API_KEY,      active: (process.env.IMAGE_AI_PROVIDER || 'gemini') === 'gemini' },
   { feature: 'image',   provider: 'fal',         model: process.env.FAL_IMAGE_MODEL || 'fal-ai/flux/dev',                        key: process.env.FAL_API_KEY,         active: process.env.IMAGE_AI_PROVIDER === 'fal' },
   { feature: 'image',   provider: 'replicate',   model: process.env.REPLICATE_IMAGE_MODEL || 'black-forest-labs/flux-1.1-pro',   key: process.env.REPLICATE_API_KEY,   active: process.env.IMAGE_AI_PROVIDER === 'replicate' },
+  { feature: 'image',   provider: 'openrouter',  model: process.env.OPENROUTER_IMAGE_MODEL || 'openai/dall-e-3',                   key: process.env.OPENROUTER_API_KEY,  active: process.env.IMAGE_AI_PROVIDER === 'openrouter' },
   { feature: 'compile', provider: 'gemini',      model: process.env.GEMINI_TEXT_MODEL || 'gemini-2.0-flash',                     key: process.env.GEMINI_API_KEY,      active: (process.env.COMPILE_AI_PROVIDER || 'gemini') === 'gemini' },
   { feature: 'compile', provider: 'openrouter',  model: process.env.OPENROUTER_TEXT_MODEL || 'meta-llama/llama-3.1-70b-instruct', key: process.env.OPENROUTER_API_KEY, active: process.env.COMPILE_AI_PROVIDER === 'openrouter' },
-  { feature: 'compile', provider: 'ollama',      model: process.env.OLLAMA_TEXT_MODEL || 'qwen2.5:7b',                           key: null,                            active: process.env.COMPILE_AI_PROVIDER === 'ollama',  extra: JSON.stringify({ host: process.env.OLLAMA_HOST }) },
+  { feature: 'compile', provider: 'ollama',       model: process.env.OLLAMA_TEXT_MODEL || 'qwen2.5:7b',                           key: null,                                  active: process.env.COMPILE_AI_PROVIDER === 'ollama',        extra: JSON.stringify({ host: process.env.OLLAMA_HOST || 'http://localhost:11434' }) },
+  { feature: 'compile', provider: 'ollama_cloud', model: process.env.OLLAMA_CLOUD_TEXT_MODEL || 'qwen2.5:7b',                      key: process.env.OLLAMA_CLOUD_API_KEY,      active: process.env.COMPILE_AI_PROVIDER === 'ollama_cloud' },
 ];
 const insertProvider = db.prepare(`
   INSERT OR IGNORE INTO ai_provider_settings
@@ -535,8 +538,11 @@ class AISettingsManager {
     const start = Date.now();
     let key = apiKey;
     if (apiKey === '__USE_STORED__') {
-      const row = db.prepare('SELECT api_key_enc FROM ai_provider_settings WHERE feature = ? AND provider = ?').get(feature, provider);
+      const row = db.prepare('SELECT api_key_enc, extra_config FROM ai_provider_settings WHERE feature = ? AND provider = ?').get(feature, provider);
       key = row ? decryptKey(row.api_key_enc) : null;
+      if (row?.extra_config && Object.keys(extraConfig).length === 0) {
+        try { extraConfig = JSON.parse(row.extra_config); } catch {}
+      }
     }
 
     try {
@@ -571,15 +577,27 @@ class AISettingsManager {
           signal: AbortSignal.timeout(15000),
         });
         const data = await resp.json();
-        if (!data.choices?.[0]?.message?.content?.includes('OK')) throw new Error('Unexpected response');
+        if (!resp.ok) throw new Error(data.error?.message || data.message || `OpenRouter HTTP ${resp.status}`);
+        if (!data.choices?.[0]?.message?.content) throw new Error('No content in response');
       } else if (provider === 'ollama') {
-        const host = extraConfig.host || 'http://localhost:11434';
+        const host = (extraConfig.host || 'http://localhost:11434').replace(/\/+$/, '');
         const resp = await fetch(`${host}/api/tags`, { signal: AbortSignal.timeout(8000) });
         if (!resp.ok) throw new Error('Ollama unreachable');
         const tags = await resp.json();
         const models = tags.models?.map(m => m.name) || [];
         if (!models.some(m => m.startsWith(model.split(':')[0]))) {
           throw new Error(`Model ${model} not found on this Ollama instance`);
+        }
+      } else if (provider === 'ollama_cloud') {
+        const resp = await fetch('https://api.ollama.com/api/tags', {
+          headers: { 'Authorization': `Bearer ${key}` },
+          signal: AbortSignal.timeout(10000),
+        });
+        if (!resp.ok) throw new Error(`Ollama Cloud unreachable (HTTP ${resp.status})`);
+        const tags = await resp.json();
+        const models = tags.models?.map(m => m.name) || [];
+        if (!models.some(m => m.startsWith(model.split(':')[0]))) {
+          throw new Error(`Model ${model} not found in Ollama Cloud account`);
         }
       } else if (provider === 'fal') {
         const { fal } = require('@fal-ai/client');
@@ -715,15 +733,22 @@ class AIProviderFactory {
     if (!config) throw new Error('No active text AI provider configured');
 
     if (config.provider === 'gemini') {
-      const { GoogleGenerativeAI } = require('@google/generative-ai');
-      const genAI = new GoogleGenerativeAI(config.apiKey);
-      const model = genAI.getGenerativeModel({
-        model: config.model,
-        systemInstruction: systemPrompt,
-        generationConfig: { responseMimeType: 'application/json' },
-      });
-      const result = await model.generateContent(userPrompt);
-      return result.response.text();
+      const resp = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${config.model}:generateContent?key=${config.apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            system_instruction: { parts: [{ text: systemPrompt }] },
+            contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+            generationConfig: { response_mime_type: 'application/json' },
+          }),
+          signal: AbortSignal.timeout(120000),
+        }
+      );
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error?.message || `Gemini HTTP ${resp.status}`);
+      return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
     }
 
     if (config.provider === 'openrouter') {
@@ -745,11 +770,12 @@ class AIProviderFactory {
         signal: AbortSignal.timeout(60000),
       });
       const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error?.message || data.message || `OpenRouter HTTP ${resp.status}`);
       return data.choices?.[0]?.message?.content || '';
     }
 
     if (config.provider === 'ollama') {
-      const host = config.extraConfig?.host || 'http://localhost:11434';
+      const host = (config.extraConfig?.host || 'http://localhost:11434').replace(/\/+$/, '');
       const resp = await fetch(`${host}/api/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -759,50 +785,156 @@ class AIProviderFactory {
           format: 'json',
           stream: false,
         }),
-        signal: AbortSignal.timeout(120000),
+        signal: AbortSignal.timeout(300000),
       });
       const data = await resp.json();
       return data.response || '';
     }
 
+    if (config.provider === 'ollama_cloud') {
+      const resp = await fetch('https://api.ollama.com/api/generate', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${config.apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: config.model,
+          prompt: `${systemPrompt}\n\n${userPrompt}`,
+          format: 'json',
+          stream: false,
+        }),
+        signal: AbortSignal.timeout(300000),
+      });
+      const rawText = await resp.text();
+      if (!resp.ok) {
+        let msg = `Ollama Cloud HTTP ${resp.status}`;
+        try { msg = JSON.parse(rawText).error || msg; } catch {}
+        throw new Error(msg);
+      }
+      try {
+        const data = JSON.parse(rawText);
+        return data.response || '';
+      } catch {
+        throw new Error(`Ollama Cloud returned non-JSON response (HTTP ${resp.status})`);
+      }
+    }
+
     throw new Error(`Unsupported text provider: ${config.provider}`);
   }
 
-  async generateImage(prompt) {
+  async generateImage(prompt, referenceImages = [], seed = null) {
     const config = aiSettings.getActiveProvider('image');
     if (!config) throw new Error('No active image AI provider configured');
+
+    // All story images are portrait (children's book page proportion)
+    const portraitPrompt = `${prompt} --portrait orientation, 3:4 aspect ratio, taller than wide, sharp focus, high detail, crisp lines, vibrant colors`;
 
     if (config.provider === 'gemini') {
       const { GoogleGenerativeAI } = require('@google/generative-ai');
       const genAI = new GoogleGenerativeAI(config.apiKey);
       const model = genAI.getGenerativeModel({ model: config.model });
-      const result = await model.generateContent(prompt);
-      const part = result.response.candidates?.[0]?.content?.parts?.[0];
-      if (part?.inlineData?.data) return part.inlineData.data; // base64
+
+      // Build the text-only prompt; embed character reference descriptions inline
+      // (Gemini image models are text→image; sending inlineData images causes them
+      //  to do vision analysis instead of generation, hanging indefinitely)
+      let fullPrompt = portraitPrompt;
+      const charRefs = referenceImages.filter(r => r?.name);
+      if (charRefs.length) {
+        const refNote = charRefs.map(r =>
+          `[Character reference for ${r.name}${r.role ? ` (${r.role})` : ''}: described in the style prompt above — match their appearance exactly]`
+        ).join('\n');
+        fullPrompt = `${refNote}\n\n${portraitPrompt}`;
+      }
+
+      const result = await Promise.race([
+        model.generateContent(fullPrompt),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Image generation timed out after 60s')), 60000)),
+      ]);
+      const part = result.response.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
+      if (part?.inlineData?.data) return part.inlineData.data;
       throw new Error('Gemini Imagen returned no image data');
     }
 
     if (config.provider === 'fal') {
       const { fal } = require('@fal-ai/client');
       fal.config({ credentials: config.apiKey });
-      const result = await fal.run(config.model, {
-        input: { prompt, image_size: 'landscape_16_9', num_inference_steps: 28, guidance_scale: 3.5 },
-      });
-      const imgUrl = result.images?.[0]?.url;
-      if (!imgUrl) throw new Error('fal.ai returned no image URL');
+
+      let falModel = config.model;
+      const falInput = { prompt: portraitPrompt, image_size: 'portrait_4_3', num_inference_steps: 50, guidance_scale: 7.5 };
+
+      // When character portraits are provided, use them as IP-Adapter references.
+      // If ref has a .url (fal CDN URL from a previous generation), use it directly.
+      // Otherwise upload base64 to fal storage to get a URL.
+      // Seed locking: pass seed when provided so all pages use the same style fingerprint
+      if (seed !== null) falInput.seed = seed;
+
+      // Single focal IP adapter: only the primary/focal character (first valid ref), scale 0.6
+      const validRefs = (referenceImages || []).filter(r => r?.url || r?.base64);
+      if (validRefs.length > 0) {
+        const focalRef = validRefs[0];
+        try {
+          let refUrl = focalRef.url || null;
+          if (!refUrl) {
+            const buf = Buffer.from(focalRef.base64, 'base64');
+            const blob = new Blob([buf], { type: focalRef.mimeType || 'image/jpeg' });
+            refUrl = await fal.storage.upload(blob);
+          }
+          falModel = 'fal-ai/flux-general';
+          falInput.ip_adapter = [{ image_url: refUrl, scale: 0.85 }];
+        } catch (uploadErr) {
+          console.warn(`fal.ai portrait reference failed for ${focalRef.name || 'unknown'}: ${uploadErr.message}`);
+        }
+      }
+
+      const result = await fal.run(falModel, { input: falInput });
+      const falImages = result.data?.images || result.images;
+      const imgUrl = falImages?.[0]?.url;
+      if (!imgUrl) throw new Error(`fal.ai returned no image URL. Keys: ${JSON.stringify(Object.keys(result || {}))}`);
+      const resultSeed = result.data?.seed ?? result.seed ?? null;
       const imgResp = await fetch(imgUrl);
       const buf = await imgResp.arrayBuffer();
-      return Buffer.from(buf).toString('base64');
+      return { base64: Buffer.from(buf).toString('base64'), sourceUrl: imgUrl, seed: resultSeed };
     }
 
     if (config.provider === 'replicate') {
       const Replicate = require('replicate');
       const replicate = new Replicate({ auth: config.apiKey });
-      const output = await replicate.run(config.model, { input: { prompt } });
+
+      // When a character portrait is provided, use fofr/consistent-character which
+      // is specifically designed to place a reference subject into new scenes.
+      const primaryRef = (referenceImages || []).find(r => r?.base64);
+      if (primaryRef) {
+        try {
+          const subjectDataUri = `data:${primaryRef.mimeType || 'image/jpeg'};base64,${primaryRef.base64}`;
+          const output = await replicate.run('fofr/consistent-character', {
+            input: {
+              prompt: portraitPrompt,
+              subject: subjectDataUri,
+              output_format: 'png',
+              output_quality: 90,
+              number_of_outputs: 1,
+            },
+          });
+          const imgUrl = Array.isArray(output) ? output[0] : output;
+          const imgResp = await fetch(imgUrl);
+          const buf = await imgResp.arrayBuffer();
+          return Buffer.from(buf).toString('base64');
+        } catch (refErr) {
+          console.warn(`Replicate consistent-character failed, falling back to default model: ${refErr.message}`);
+          // Fall through to default model below
+        }
+      }
+
+      const output = await replicate.run(config.model, { input: { prompt: portraitPrompt, width: 768, height: 1024 } });
       const imgUrl = Array.isArray(output) ? output[0] : output;
       const imgResp = await fetch(imgUrl);
       const buf = await imgResp.arrayBuffer();
       return Buffer.from(buf).toString('base64');
+    }
+
+    if (config.provider === 'openrouter') {
+      throw new Error('OpenRouter image generation not yet configured — provider reserved for future use');
     }
 
     throw new Error(`Unsupported image provider: ${config.provider}`);
@@ -890,10 +1022,11 @@ Rules:
 - Output valid JSON only, no markdown fences`;
 }
 
-function buildCharacterUserPrompt({ name, type, customType, traits, distinctiveFeature, ageRange, language }) {
+function buildCharacterUserPrompt({ name, type, customType, gender, traits, distinctiveFeature, ageRange, language }) {
   return `Create a character profile for a Filipino children's book.
 Name: ${name}
 Type: ${type}${customType ? ` (Custom: ${customType})` : ''}
+Gender: ${gender || 'unspecified'}
 Personality traits: ${(traits || []).join(', ') || 'Mabait'}
 Distinctive feature: ${distinctiveFeature || 'none specified'}
 Age range of readers: ${ageRange || '4-6'}
@@ -903,8 +1036,9 @@ Output this exact JSON:
 {
   "name": "${name}",
   "type": "${type}",
-  "personalityDescription": "2-3 sentences about personality",
-  "appearance": "2-3 sentences describing physical look",
+  "gender": "${gender || 'unspecified'}",
+  "personalityDescription": "2-3 sentences about personality, use gender-appropriate pronouns",
+  "appearance": "2-3 sentences describing physical look with gender-appropriate details",
   "funFact": "one fun sentence about the character",
   "catchphrase": "short memorable phrase in ${language || 'English'}",
   "catchphraseEnglish": "English translation (null if language is English)",
@@ -931,10 +1065,16 @@ Cultural authenticity: include naturally where appropriate — sinigang, adobo, 
 Output valid JSON only. No markdown fences.`;
 }
 
-function buildStoryUserPrompt({ character, tone, setting, settingFilipino, ageRange, pageCount, valuesCategory, specificLesson, causeEffectEnabled, language, isBilingual }) {
+function buildStoryUserPrompt({ character, tone, setting, settingFilipino, ageRange, pageCount, valuesCategory, specificLesson, causeEffectEnabled, language, isBilingual, supportingChars, pet, illustrationStyle }) {
+  const styleDesc = illustrationStyle || 'whimsical digital illustration, soft rounded shapes, flat pastel color palette, subtle traditional watercolor texture, children\'s book illustration style, warm and friendly atmosphere';
+  const supportingDesc = (supportingChars || []).length
+    ? '\nSupporting characters:\n' + supportingChars.map(s => `- ${s.name}, ${s.relationship}, ${s.gender || 'unspecified gender'}`).join('\n')
+    : '';
+  const petDesc = pet?.name ? `\nPet: ${pet.name} the ${pet.type}` : '';
+
   return `Write a ${pageCount || 10}-page Filipino children's story with these parameters:
 
-Character: ${JSON.stringify(character)}
+Main character: ${JSON.stringify(character)}${supportingDesc}${petDesc}
 Tone: ${tone}
 Setting: ${settingFilipino || setting} (${setting})
 Age range: ${ageRange}
@@ -942,12 +1082,15 @@ Values: ${valuesCategory} — Lesson: ${specificLesson}
 Cause & Effect: ${causeEffectEnabled ? 'YES — one wrong-choice moment on pages 4-6, gentle consequence, character grows' : 'NO'}
 Language: ${language}
 Bilingual: ${isBilingual ? 'YES — add English translation per page' : 'NO'}
+Illustration style: ${styleDesc}
 
 Rules:
-- Character name "${character.name}" on every page
+- Main character name "${character.name}" on every page
 - Personality traits reflected in actions
 - Catchphrase "${character.catchphrase}" appears at least once
 - Distinctive feature mentioned at least twice
+- Supporting characters and pet appear naturally in the story
+- Use gender-appropriate pronouns for all characters
 - Cause & effect page: ages 2-4 = extremely mild, ages 5-8 = slightly more tangible
 
 Output this exact JSON:
@@ -963,24 +1106,36 @@ Output this exact JSON:
       "text": "Story text in ${language}",
       "textEnglish": "English translation (null if not bilingual)",
       "causeEffect": null,
-      "illustrationIdea": "Brief scene for illustrator",
-      "imagePrompt": "Full AI art prompt: [character] [scene] whimsical digital illustration, soft rounded shapes, flat pastel color palette, subtle traditional watercolor texture, children's book illustration style, warm and friendly atmosphere"
+      "illustrationIdea": "Brief scene description for illustrator",
+      "charactersOnPage": ["${character.name}"],
+      "imagePrompt": "Full AI art prompt describing the scene. Style: ${styleDesc}"
     }
   ],
-  "characterBlueprintPrompt": "Full character reference prompt for consistent art generation"
+  "characterBlueprintPrompt": "Full visual reference for the MAIN character only: name, exact species/type, exact colors, exact outfit details, exact hair/features — written as AI art prompt for consistent generation",
+  "settingBlueprintPrompt": "Consistent visual description of the story's primary setting: location type, architecture style, time of day, lighting, color palette, foliage/landscape details, atmosphere — written as AI art prompt so every page image looks like the same place",
+  "supportingCharacters": [
+    {
+      "name": "Character name",
+      "role": "Relationship to main character",
+      "gender": "boy/girl/other",
+      "blueprintPrompt": "Full visual reference: exact appearance, clothing, hair, age — AI art prompt"
+    }
+  ]
 }
-Note: causeEffect is non-null ONLY on one page (pages 4-6): { "wrongChoice": "...", "consequence": "...", "resolution": "..." }`;
+Note: causeEffect is non-null ONLY on one page (pages 4-6): { "wrongChoice": "...", "consequence": "...", "resolution": "..." }
+Note: charactersOnPage lists the names of ALL characters (and pet) who APPEAR on that specific page — include every named character.
+Note: supportingCharacters MUST list every named character who appears in the story (other than the main character). If you write a Nanay, Tatay, Lola, friend, or pet — they MUST appear in this array with a full blueprintPrompt. Empty array only if literally no other character appears anywhere.`;
 }
 
 // ── Generation Routes ─────────────────────────────────────────────────────────
 app.post('/api/generate-character', authMiddleware, genRateLimit, async (req, res) => {
-  const { name, type, customType, traits, distinctiveFeature, age, ageRange, language } = req.body;
+  const { name, type, customType, gender, traits, distinctiveFeature, age, ageRange, language } = req.body;
   if (!name) return res.status(400).json({ error: 'Character name is required' });
 
   try {
     const raw = await aiFactory.generateText(
       buildCharacterSystemPrompt(),
-      buildCharacterUserPrompt({ name, type, customType, traits, distinctiveFeature, age, ageRange, language })
+      buildCharacterUserPrompt({ name, type, customType, gender, traits, distinctiveFeature, age, ageRange, language })
     );
     const character = safeParseAIJson(raw);
 
@@ -1006,7 +1161,7 @@ app.post('/api/generate-character', authMiddleware, genRateLimit, async (req, re
 });
 
 app.post('/api/generate-story', authMiddleware, genRateLimit, async (req, res) => {
-  const { character, tone, setting, settingFilipino, ageRange, pageCount, valuesCategory, specificLesson, causeEffectEnabled, language, isBilingual } = req.body;
+  const { character, tone, setting, settingFilipino, ageRange, pageCount, valuesCategory, specificLesson, causeEffectEnabled, language, isBilingual, supportingChars, pet, illustrationStyle } = req.body;
   if (!character || !character.name) return res.status(400).json({ error: 'Character profile is required' });
   if (!tone || !setting) return res.status(400).json({ error: 'Tone and setting are required' });
 
@@ -1016,7 +1171,7 @@ app.post('/api/generate-story', authMiddleware, genRateLimit, async (req, res) =
   try {
     const raw = await aiFactory.generateText(
       buildStorySystemPrompt(language || 'English', ageRange || '4-6'),
-      buildStoryUserPrompt({ character, tone, setting, settingFilipino, ageRange, pageCount, valuesCategory, specificLesson, causeEffectEnabled, language, isBilingual })
+      buildStoryUserPrompt({ character, tone, setting, settingFilipino, ageRange, pageCount, valuesCategory, specificLesson, causeEffectEnabled, language, isBilingual, supportingChars, pet, illustrationStyle })
     );
     const story = safeParseAIJson(raw);
     incrementStoryCount(req.userId);
@@ -1028,14 +1183,14 @@ app.post('/api/generate-story', authMiddleware, genRateLimit, async (req, res) =
 
     res.json(story);
   } catch (err) {
+    console.error('generate-story error:', err.message);
     const isKeyError = /invalid.*api|authentication|unauthorized|quota|billing/i.test(err.message);
     if (isKeyError) {
       const config = aiSettings.getActiveProvider('text');
       if (config) db.prepare('UPDATE ai_provider_settings SET last_test_ok = 0, last_test_msg = ? WHERE feature = ? AND provider = ?').run(err.message, 'text', config.provider);
-      return res.status(503).json({ error: 'Story generation is temporarily unavailable. Please try again in a few minutes.' });
+      return res.status(503).json({ error: `Story generation is temporarily unavailable: ${err.message}` });
     }
-    console.error('generate-story error:', err);
-    res.status(500).json({ error: 'Story generation failed. Please try again.' });
+    res.status(500).json({ error: `Story generation failed: ${err.message}` });
   }
 });
 
@@ -1268,7 +1423,7 @@ setInterval(() => odoo.flushSyncQueue(), 5 * 60 * 1000).unref();
 
 // ── Image Generation Route ────────────────────────────────────────────────────
 app.post('/api/generate-image', authMiddleware, genRateLimit, async (req, res) => {
-  const { promptText, customization, storyId, pageIndex } = req.body;
+  const { promptText, customization, storyId, pageIndex, referenceImages, seed } = req.body;
   if (!promptText) return res.status(400).json({ error: 'promptText is required' });
 
   const user = db.prepare('SELECT tier, is_tester, tester_limits FROM users WHERE id = ?').get(req.userId);
@@ -1294,7 +1449,10 @@ app.post('/api/generate-image', authMiddleware, genRateLimit, async (req, res) =
   const finalPrompt = customization ? `${promptText}. ${customization}` : promptText;
 
   try {
-    const base64 = await aiFactory.generateImage(finalPrompt);
+    const imgResult = await aiFactory.generateImage(finalPrompt, referenceImages || [], seed ?? null);
+    const base64 = typeof imgResult === 'object' ? imgResult.base64 : imgResult;
+    const falImageUrl = typeof imgResult === 'object' ? (imgResult.sourceUrl || null) : null;
+    const resultSeed = typeof imgResult === 'object' ? (imgResult.seed ?? null) : null;
 
     let savedId = null;
     if (storyId) {
@@ -1317,7 +1475,7 @@ app.post('/api/generate-image', authMiddleware, genRateLimit, async (req, res) =
     db.prepare('INSERT INTO usage_log (user_id, action, provider, model) VALUES (?, ?, ?, ?)')
       .run(req.userId, 'image_generate', imgProvider?.provider || 'unknown', imgProvider?.model || 'unknown');
 
-    res.json({ imageBase64: base64, imageUrl: `data:image/png;base64,${base64}`, savedId });
+    res.json({ imageBase64: base64, imageUrl: `data:image/png;base64,${base64}`, savedId, falImageUrl, seed: resultSeed });
   } catch (err) {
     console.error('generate-image error:', err);
     res.status(500).json({ error: 'Image generation failed. Please try again.' });

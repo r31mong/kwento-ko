@@ -8,7 +8,7 @@
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&family=Be+Vietnam+Pro:ital,wght@0,100..900;1,100..900&family=Pacifico&family=Baloo+2:wght@400;600;700;800&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&family=Be+Vietnam+Pro:ital,wght@0,100..900;1,100..900&family=Pacifico&family=Baloo+2:wght@400;600;700;800&family=Nunito:wght@400;600;700;800&family=Quicksand:wght@400;500;600;700&family=Patrick+Hand&family=Fredoka+One&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
 
   <!-- Tailwind CDN with Stitch config -->
   <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
@@ -236,6 +236,37 @@
     textarea { border-radius: 1rem; min-height: 80px; resize: vertical; }
     select { border-radius: 1rem; }
     input:focus, textarea:focus, select:focus { ring: 2px; box-shadow: 0 0 0 2px #ac4218; background: #f3f399; }
+
+    /* ── Story settings panel ── */
+    .sp-panel { background: #fefdc1; border-radius: 1rem; margin-bottom: 16px; overflow: hidden; box-shadow: 0px 4px 12px rgba(58,58,0,0.06); }
+    .sp-summary { display: flex; align-items: center; gap: 8px; padding: 14px 18px; cursor: pointer; user-select: none; list-style: none; }
+    .sp-summary::-webkit-details-marker { display: none; }
+    .sp-icon { font-size: 18px; color: #ac4218; }
+    .sp-title { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 14px; color: #3a3a00; flex: 1; }
+    .sp-chevron { font-size: 18px; color: #676804; transition: transform 0.2s; }
+    details[open].sp-panel .sp-chevron { transform: rotate(180deg); }
+    .sp-body { padding: 0 18px 18px; }
+    .sp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 6px 12px; margin-bottom: 16px; }
+    .sp-field { display: flex; flex-direction: column; gap: 2px; }
+    .sp-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: #848526; }
+    .sp-val { font-size: 13px; color: #3a3a00; font-family: 'Be Vietnam Pro', sans-serif; }
+    .sp-edit-row { border-top: 1px solid rgba(190,190,89,0.4); padding-top: 14px; }
+    .sp-hint { font-size: 12px; color: #676804; margin-bottom: 12px; }
+    .sp-inline-fields { display: flex; flex-direction: column; gap: 12px; }
+    .sp-inline-field { display: flex; flex-direction: column; gap: 6px; }
+    .sp-inline-label { font-size: 11px; font-weight: 700; color: #676804; text-transform: uppercase; letter-spacing: 0.05em; }
+    .sp-pills .pill { font-size: 12px; padding: 4px 12px; }
+
+    /* ── Supporting character rows ── */
+    .sc-card { background: #fefdc1; border-radius: 1rem; padding: 12px 14px; position: relative; }
+    .sc-card .sc-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .sc-card .sc-field-label { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 11px; font-weight: 700; color: #676804; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 3px; }
+    .sc-card input[type="text"], .sc-card select { width: 100%; padding: 8px 12px; border-radius: 0.75rem; font-size: 13px; margin: 0; }
+    .sc-card .sc-gender-pills { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+    .sc-card .sc-gender-pill { padding: 5px 12px; border-radius: 9999px; font-size: 12px; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 600; cursor: pointer; background: #edee83; color: #3a3a00; border: none; transition: all 0.15s; }
+    .sc-card .sc-gender-pill.active { background: #ac4218; color: #fff; }
+    .sc-card .sc-remove { position: absolute; top: 8px; right: 10px; background: none; border: none; cursor: pointer; font-size: 18px; color: #b33938; line-height: 1; padding: 2px 4px; opacity: 0.7; }
+    .sc-card .sc-remove:hover { opacity: 1; }
 
     /* ── Section header ── */
     .section-header { background: #fefdc1; color: #3a3a00; padding: 14px 20px; border-radius: 1rem; margin-bottom: 20px; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 18px; font-weight: 800; border-left: 4px solid #ac4218; }
@@ -817,11 +848,63 @@
             </div>
           </div>
 
+          <!-- Gender -->
+          <div>
+            <label class="field-label">Gender</label>
+            <div class="pills" id="char-gender-pills">
+              <div class="pill selected" data-value="Boy" onclick="selectPill(this,'char-gender-pills')">👦 Boy</div>
+              <div class="pill" data-value="Girl" onclick="selectPill(this,'char-gender-pills')">👧 Girl</div>
+              <div class="pill" data-value="Non-binary" onclick="selectPill(this,'char-gender-pills')">🧒 Non-binary</div>
+            </div>
+          </div>
+
           <!-- Feature -->
           <div>
             <label class="field-label">Distinctive Feature <span class="text-on-surface-variant font-normal normal-case text-xs">(optional)</span></label>
             <input type="text" id="char-feature" placeholder="e.g. always wears a red bandana, has a magical tail..." oninput="updateCharPreview()" />
           </div>
+        </div>
+      </div>
+
+      <!-- Supporting Characters -->
+      <div class="bg-surface-container-lowest rounded-xl p-5 shadow-whisper-sm space-y-3">
+        <div class="flex items-center justify-between">
+          <label class="field-label mb-0">Supporting Characters <span class="text-on-surface-variant font-normal normal-case text-xs">(optional)</span></label>
+          <button class="btn-ghost text-sm py-1.5 px-4 flex items-center gap-1" onclick="addSupportingChar()">
+            <span class="material-symbols-outlined text-base">add</span> Add
+          </button>
+        </div>
+        <div id="supporting-chars-list" class="space-y-2">
+          <!-- rows added by JS -->
+        </div>
+        <p class="text-xs text-on-surface-variant">Family, friends, classmates — anyone who appears in the story.</p>
+      </div>
+
+      <!-- Pet -->
+      <div class="bg-surface-container-lowest rounded-xl p-5 shadow-whisper-sm space-y-3">
+        <div class="flex items-center justify-between gap-4 cursor-pointer" onclick="document.getElementById('has-pet-toggle').click()">
+          <div>
+            <p class="font-label font-semibold text-sm text-on-surface">🐾 Add a Pet</p>
+            <p class="text-xs text-on-surface-variant mt-0.5">Give the main character a pet companion</p>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer flex-shrink-0" onclick="event.stopPropagation()">
+            <input type="checkbox" id="has-pet-toggle" class="sr-only peer" onchange="document.getElementById('pet-section').style.display=this.checked?'block':'none'" />
+            <div class="w-11 h-6 bg-surface-container-highest rounded-full peer peer-checked:bg-primary transition-colors"></div>
+            <div class="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform peer-checked:translate-x-5"></div>
+          </label>
+        </div>
+        <div id="pet-section" style="display:none;" class="space-y-3 pt-2">
+          <input type="text" id="pet-name" placeholder="Pet name (e.g. Pogi, Brownie, Kiko)..." />
+          <div class="pills" id="pet-type-pills">
+            <div class="pill selected" data-value="Dog" onclick="selectPill(this,'pet-type-pills')">🐶 Dog</div>
+            <div class="pill" data-value="Cat" onclick="selectPill(this,'pet-type-pills')">🐱 Cat</div>
+            <div class="pill" data-value="Fish" onclick="selectPill(this,'pet-type-pills')">🐟 Fish</div>
+            <div class="pill" data-value="Bird" onclick="selectPill(this,'pet-type-pills')">🐦 Bird</div>
+            <div class="pill" data-value="Rabbit" onclick="selectPill(this,'pet-type-pills')">🐰 Rabbit</div>
+            <div class="pill" data-value="Carabao" onclick="selectPill(this,'pet-type-pills')">🐃 Carabao</div>
+            <div class="pill" data-value="Custom" onclick="selectPill(this,'pet-type-pills')">✏️ Custom</div>
+          </div>
+          <input type="text" id="pet-type-custom" placeholder="Custom pet type..." style="display:none;" />
         </div>
       </div>
 
@@ -836,10 +919,6 @@
           <div>
             <label class="field-label">Special Ability</label>
             <input type="text" id="char-ability" placeholder="e.g. can talk to animals..." />
-          </div>
-          <div class="md:col-span-2">
-            <label class="field-label">Supporting Character + Relationship</label>
-            <input type="text" id="char-support" placeholder="e.g. Nanay Rosa (mother), Lolo Ben (grandfather)..." />
           </div>
         </div>
       </details>
@@ -874,11 +953,15 @@
       <div class="bg-surface-container-lowest rounded-xl p-6 shadow-whisper-sm space-y-3">
         <label class="field-label">Story Tone</label>
         <div class="pills" id="tone-pills">
-          <div class="pill" data-value="Funny" onclick="selectPill(this,'tone-pills')">🤣 Funny</div>
-          <div class="pill selected" data-value="Gentle" onclick="selectPill(this,'tone-pills')">🌿 Gentle</div>
-          <div class="pill" data-value="Adventurous" onclick="selectPill(this,'tone-pills')">🗺️ Adventurous</div>
-          <div class="pill" data-value="Mysterious" onclick="selectPill(this,'tone-pills')">🌙 Mysterious</div>
-          <div class="pill" data-value="Heartwarming" onclick="selectPill(this,'tone-pills')">💛 Heartwarming</div>
+          <div class="pill" data-value="Funny" onclick="selectPill(this,'tone-pills');toggleCustomTone()">🤣 Funny</div>
+          <div class="pill selected" data-value="Gentle" onclick="selectPill(this,'tone-pills');toggleCustomTone()">🌿 Gentle</div>
+          <div class="pill" data-value="Adventurous" onclick="selectPill(this,'tone-pills');toggleCustomTone()">🗺️ Adventurous</div>
+          <div class="pill" data-value="Mysterious" onclick="selectPill(this,'tone-pills');toggleCustomTone()">🌙 Mysterious</div>
+          <div class="pill" data-value="Heartwarming" onclick="selectPill(this,'tone-pills');toggleCustomTone()">💛 Heartwarming</div>
+          <div class="pill" data-value="__custom__" onclick="selectPill(this,'tone-pills');toggleCustomTone()">✏️ Custom</div>
+        </div>
+        <div id="custom-tone-wrap" style="display:none;margin-top:10px;">
+          <input type="text" id="custom-tone-input" class="text-input" placeholder="Describe the tone, e.g. 'Spooky but silly, with lots of puns'" maxlength="120" />
         </div>
       </div>
 
@@ -949,6 +1032,37 @@
         </div>
       </div>
 
+      <!-- Font -->
+      <div class="bg-surface-container-lowest rounded-xl p-5 shadow-whisper-sm space-y-3">
+        <label class="field-label">Story Font</label>
+        <div class="pills" id="font-pills">
+          <div class="pill selected" data-value="Baloo 2" onclick="selectPill(this,'font-pills')">Baloo 2</div>
+          <div class="pill" data-value="Nunito" onclick="selectPill(this,'font-pills')">Nunito</div>
+          <div class="pill" data-value="Quicksand" onclick="selectPill(this,'font-pills')">Quicksand</div>
+          <div class="pill" data-value="Patrick Hand" onclick="selectPill(this,'font-pills')">Patrick Hand</div>
+          <div class="pill" data-value="Fredoka One" onclick="selectPill(this,'font-pills')">Fredoka One</div>
+        </div>
+      </div>
+
+      <!-- Illustration Style -->
+      <div class="bg-surface-container-lowest rounded-xl p-5 shadow-whisper-sm space-y-3">
+        <label class="field-label">Illustration Style</label>
+        <div class="card-grid" id="illus-style-grid" style="grid-template-columns:repeat(3,1fr);">
+          <div class="choice-card selected" data-value="" onclick="selectCard(this,'illus-style-grid');document.getElementById('custom-illus-wrap').style.display='none'"><span class="emoji">📖</span><span class="label">Storybook</span><span class="sublabel">Whimsical, warm</span></div>
+          <div class="choice-card" data-value="cartoon style, bold outlines, vibrant colors, fun and expressive, children's animation style" onclick="selectCard(this,'illus-style-grid');document.getElementById('custom-illus-wrap').style.display='none'"><span class="emoji">🎨</span><span class="label">Cartoon</span><span class="sublabel">Bold & vibrant</span></div>
+          <div class="choice-card" data-value="anime illustration style, clean line art, large expressive eyes, soft cel shading, manga-inspired" onclick="selectCard(this,'illus-style-grid');document.getElementById('custom-illus-wrap').style.display='none'"><span class="emoji">⛩️</span><span class="label">Anime</span><span class="sublabel">Manga-inspired</span></div>
+          <div class="choice-card" data-value="comic book style, halftone dots, dynamic panels feel, bold black outlines, primary color accents" onclick="selectCard(this,'illus-style-grid');document.getElementById('custom-illus-wrap').style.display='none'"><span class="emoji">💥</span><span class="label">Comic Book</span><span class="sublabel">Bold & dynamic</span></div>
+          <div class="choice-card" data-value="watercolor illustration, soft wet-on-wet edges, loose brushstrokes, translucent layered colors, traditional art feel" onclick="selectCard(this,'illus-style-grid');document.getElementById('custom-illus-wrap').style.display='none'"><span class="emoji">🎭</span><span class="label">Watercolor</span><span class="sublabel">Soft & painterly</span></div>
+          <div class="choice-card" data-value="flat vector illustration, clean geometric shapes, minimal shadows, solid color fills, modern graphic design" onclick="selectCard(this,'illus-style-grid');document.getElementById('custom-illus-wrap').style.display='none'"><span class="emoji">🔷</span><span class="label">Flat Design</span><span class="sublabel">Clean & minimal</span></div>
+          <div class="choice-card" data-value="colored pencil illustration, hand-drawn texture, soft hatching, warm pencil strokes, charming sketchbook feel" onclick="selectCard(this,'illus-style-grid');document.getElementById('custom-illus-wrap').style.display='none'"><span class="emoji">✏️</span><span class="label">Colored Pencil</span><span class="sublabel">Hand-drawn charm</span></div>
+          <div class="choice-card" data-value="pixel art illustration, 8-bit retro style, blocky pixels, limited color palette, nostalgic game aesthetic" onclick="selectCard(this,'illus-style-grid');document.getElementById('custom-illus-wrap').style.display='none'"><span class="emoji">👾</span><span class="label">Pixel Art</span><span class="sublabel">Retro & playful</span></div>
+          <div class="choice-card" data-value="custom" onclick="selectCard(this,'illus-style-grid');document.getElementById('custom-illus-wrap').style.display='block'"><span class="emoji">🖌️</span><span class="label">Custom</span><span class="sublabel">Describe your style</span></div>
+        </div>
+        <div id="custom-illus-wrap" style="display:none;">
+          <input type="text" id="custom-illus-style" placeholder="Describe your illustration style (e.g. oil painting, ukiyo-e woodblock, retro Filipino komiks)..." />
+        </div>
+      </div>
+
       <!-- Story Options -->
       <div class="bg-surface-container-lowest rounded-xl p-6 shadow-whisper-sm space-y-3">
         <label class="field-label">Story Options</label>
@@ -974,6 +1088,19 @@
           </div>
           <label class="relative inline-flex items-center cursor-pointer flex-shrink-0" onclick="event.stopPropagation()">
             <input type="checkbox" id="bilingual-toggle" class="sr-only peer" />
+            <div class="w-11 h-6 bg-surface-container-highest rounded-full peer peer-checked:bg-primary transition-colors peer-focus:ring-2 peer-focus:ring-primary/40"></div>
+            <div class="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform peer-checked:translate-x-5"></div>
+          </label>
+        </div>
+
+        <!-- Text-in-image toggle -->
+        <div class="flex items-center justify-between gap-4 bg-surface-container rounded-xl px-4 py-3.5 cursor-pointer" onclick="document.getElementById('text-in-image-toggle').click()">
+          <div>
+            <p class="font-label font-semibold text-sm text-on-surface">🖼️ Include Text in Generated Images</p>
+            <p class="text-xs text-on-surface-variant mt-0.5">AI will render the story text directly on the illustration (quality varies by AI model)</p>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer flex-shrink-0" onclick="event.stopPropagation()">
+            <input type="checkbox" id="text-in-image-toggle" class="sr-only peer" />
             <div class="w-11 h-6 bg-surface-container-highest rounded-full peer peer-checked:bg-primary transition-colors peer-focus:ring-2 peer-focus:ring-primary/40"></div>
             <div class="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform peer-checked:translate-x-5"></div>
           </label>
@@ -1057,7 +1184,7 @@
     <div id="tab-bar" class="flex border-b border-surface-container-high bg-surface overflow-x-auto">
       <div class="max-w-5xl mx-auto flex w-full px-2">
         <button class="tab-btn active" onclick="switchTab('story')">📖 Story</button>
-        <button class="tab-btn" onclick="switchTab('prompts')">🎨 Image Prompts</button>
+        <button class="tab-btn" onclick="switchTab('characters')">🎨 Characters</button>
         <button class="tab-btn" onclick="switchTab('character-card')">🃏 Character Card</button>
         <button class="tab-btn" onclick="switchTab('discussion')">❓ Discussion Guide</button>
         <button class="tab-btn" onclick="switchTab('library')">📚 My Library</button>
@@ -1067,6 +1194,7 @@
     <!-- Tab panels -->
     <div id="tab-story" class="tab-panel active" style="max-width:none;padding:0;">
       <div class="max-w-3xl mx-auto px-4 py-6">
+        <div id="story-settings-panel"></div>
         <div id="back-cover-summary" class="bg-surface-container-low rounded-xl p-5 mb-5 shadow-whisper-sm"></div>
         <div id="story-pages-container"></div>
         <div id="moral-banner" style="display:none;" class="rounded-xl p-6 text-center my-5 bg-primary text-on-primary"></div>
@@ -1074,15 +1202,8 @@
       </div>
     </div>
 
-    <div id="tab-prompts" class="tab-panel">
-      <div class="mb-4">
-        <label class="field-label">Prompt Style:</label>
-        <div class="pills mt-2" id="prompt-style-pills">
-          <div class="pill selected" data-value="dalle" onclick="selectPill(this,'prompt-style-pills');renderPrompts()">DALL-E / Canva</div>
-          <div class="pill" data-value="midjourney" onclick="selectPill(this,'prompt-style-pills');renderPrompts()">Midjourney</div>
-        </div>
-      </div>
-      <div id="prompts-container"></div>
+    <div id="tab-characters" class="tab-panel">
+      <div id="characters-container"></div>
     </div>
 
     <div id="tab-character-card" class="tab-panel">
@@ -1250,10 +1371,13 @@ const state = {
   user: null,
   subscription: null,
   character: null,
+  characters: [],   // [{ id, name, role, blueprintPrompt, portrait }]
   story: null,
+  storyFont: 'Baloo 2',
   savedStoryId: null,
   authMode: 'register',
   currentStep: 1,
+  imageSeed: null,   // locked after first successful fal.ai generation; same seed used for all pages
 };
 
 const LOADING_MESSAGES = [
@@ -1534,6 +1658,21 @@ function getSelected(id, attr = 'value') {
   return el ? (el.dataset[attr] || el.dataset.value) : null;
 }
 
+function toggleCustomTone() {
+  const isCustom = getSelected('tone-pills') === '__custom__';
+  const wrap = document.getElementById('custom-tone-wrap');
+  if (wrap) wrap.style.display = isCustom ? 'block' : 'none';
+  if (isCustom) document.getElementById('custom-tone-input')?.focus();
+}
+
+function getTone() {
+  const sel = getSelected('tone-pills') || 'Gentle';
+  if (sel === '__custom__') {
+    return document.getElementById('custom-tone-input')?.value?.trim() || 'Gentle';
+  }
+  return sel;
+}
+
 function getSelectedMulti(id) {
   return [...document.querySelectorAll(`#${id} .pill.selected`)].map(el => el.dataset.value);
 }
@@ -1608,6 +1747,65 @@ function hideLoading(interval) {
   setTimeout(() => document.getElementById('loading-overlay').classList.remove('active'), 400);
 }
 
+function getSupportingChars() {
+  return [...document.querySelectorAll('.sc-card')].map(card => ({
+    name: card.querySelector('.sc-name').value.trim(),
+    relationship: card.querySelector('.sc-rel').value.trim(),
+    gender: card.querySelector('.sc-gender-pill.active')?.dataset.gender || 'Other',
+  })).filter(s => s.name);
+}
+
+function getPet() {
+  const hasPet = document.getElementById('has-pet-toggle')?.checked;
+  if (!hasPet) return null;
+  const petName = document.getElementById('pet-name')?.value.trim();
+  if (!petName) return null;
+  const petTypeSel = getSelected('pet-type-pills') || 'Dog';
+  const petType = petTypeSel === 'Custom'
+    ? (document.getElementById('pet-type-custom')?.value.trim() || 'Custom pet')
+    : petTypeSel;
+  return { name: petName, type: petType };
+}
+
+function getIllusStyle() {
+  const sel = getSelected('illus-style-grid');
+  if (sel === 'custom') return document.getElementById('custom-illus-style')?.value.trim() || '';
+  return sel || '';
+}
+
+function addSupportingChar(name = '', relationship = '', gender = 'Girl') {
+  const list = document.getElementById('supporting-chars-list');
+  const card = document.createElement('div');
+  card.className = 'sc-card sc-row';
+  card.innerHTML = `
+    <button class="sc-remove" onclick="this.closest('.sc-card').remove()" title="Remove">×</button>
+    <div class="sc-fields">
+      <div>
+        <div class="sc-field-label">Name</div>
+        <input class="sc-name" type="text" placeholder="e.g. Nanay Rosa" value="${escapeHtml(name)}" />
+      </div>
+      <div>
+        <div class="sc-field-label">Role / Relationship</div>
+        <input class="sc-rel" type="text" placeholder="e.g. Mother, Best Friend" value="${escapeHtml(relationship)}" />
+      </div>
+    </div>
+    <div style="margin-top:8px;">
+      <div class="sc-field-label">Gender</div>
+      <div class="sc-gender-pills">
+        <button type="button" class="sc-gender-pill${gender==='Boy'?' active':''}" data-gender="Boy" onclick="scSetGender(this,'Boy')">👦 Boy</button>
+        <button type="button" class="sc-gender-pill${gender==='Girl'?' active':''}" data-gender="Girl" onclick="scSetGender(this,'Girl')">👧 Girl</button>
+        <button type="button" class="sc-gender-pill${gender==='Other'?' active':''}" data-gender="Other" onclick="scSetGender(this,'Other')">🧒 Other</button>
+      </div>
+    </div>`;
+  list.appendChild(card);
+}
+
+function scSetGender(btn, value) {
+  const card = btn.closest('.sc-card');
+  card.querySelectorAll('.sc-gender-pill').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+}
+
 async function generateCharacter() {
   const name = document.getElementById('char-name').value.trim();
   if (!name) return;
@@ -1622,6 +1820,7 @@ async function generateCharacter() {
       name,
       type: getSelected('char-type-grid') || 'Animal Friend',
       customType: document.getElementById('custom-type').value,
+      gender: getSelected('char-gender-pills') || 'Boy',
       traits: getSelectedMulti('trait-pills'),
       distinctiveFeature: document.getElementById('char-feature').value,
       age: document.getElementById('char-age').value,
@@ -1679,24 +1878,42 @@ async function generateStory() {
     return;
   }
 
+  const tone = getTone();
+  const setting = getSelected('setting-grid') || 'Province';
+  const settingFilipino = document.querySelector('#setting-grid .selected')?.dataset.fil || '';
+  const ageRange = getSelected('age-pills') || '4-6';
+  const valuesCategory = getSelected('values-grid') || 'Filipino Family';
+  const specificLesson = getSelected('lesson-pills') || '';
+  const causeEffectEnabled = document.getElementById('cause-effect-toggle').checked;
+  const supportingChars = getSupportingChars();
+  const pet = getPet();
+  const illustrationStyle = getIllusStyle();
+
+  state.storyParams = { tone, setting, settingFilipino, ageRange, pageCount, valuesCategory, specificLesson, causeEffectEnabled, lang, isBilingual, supportingChars, pet, illustrationStyle };
+
   const interval = showLoading('Isinusulat ang kwento... ✍️');
   document.getElementById('write-story-btn').disabled = true;
 
   try {
     const story = await api('POST', '/api/generate-story', {
       character: state.character,
-      tone: getSelected('tone-pills') || 'Gentle',
-      setting: getSelected('setting-grid') || 'Province',
-      settingFilipino: document.querySelector('#setting-grid .selected')?.dataset.fil || '',
-      ageRange: getSelected('age-pills') || '4-6',
+      tone,
+      setting,
+      settingFilipino,
+      ageRange,
       pageCount,
-      valuesCategory: getSelected('values-grid') || 'Filipino Family',
-      specificLesson: getSelected('lesson-pills') || '',
-      causeEffectEnabled: document.getElementById('cause-effect-toggle').checked,
+      valuesCategory,
+      specificLesson,
+      causeEffectEnabled,
       language: lang,
       isBilingual,
+      supportingChars,
+      pet,
+      illustrationStyle,
     });
     state.story = story;
+    state.storyFont = getSelected('font-pills') || 'Baloo 2';
+    state.characters = [];  // will be built by renderBook → buildCharactersState
     hideLoading(interval);
     goToStep(4);
     renderBook();
@@ -1707,6 +1924,116 @@ async function generateStory() {
   }
 }
 
+function renderStorySettings() {
+  const p = state.storyParams;
+  const el = document.getElementById('story-settings-panel');
+  if (!el || !p) return;
+
+  const field = (label, val) => val ? `<div class="sp-field"><span class="sp-label">${label}</span><span class="sp-val">${escapeHtml(String(val))}</span></div>` : '';
+  const supporting = (p.supportingChars || []).map(s => `${s.name} (${s.relationship}${s.gender ? ', ' + s.gender : ''})`).join(', ');
+  const petStr = p.pet?.name ? `${p.pet.name} the ${p.pet.type}` : '';
+
+  el.innerHTML = `
+    <details class="sp-panel" id="story-settings-details">
+      <summary class="sp-summary">
+        <span class="material-symbols-outlined sp-icon">tune</span>
+        <span class="sp-title">Story Settings</span>
+        <span class="sp-chevron material-symbols-outlined">expand_more</span>
+      </summary>
+      <div class="sp-body">
+        <div class="sp-grid">
+          ${field('Tone', p.tone)}
+          ${field('Setting', p.setting + (p.settingFilipino ? ` (${p.settingFilipino})` : ''))}
+          ${field('Age Range', p.ageRange)}
+          ${field('Language', p.lang + (p.isBilingual && p.lang !== 'English' ? ' + English' : ''))}
+          ${field('Pages', p.pageCount)}
+          ${field('Values', p.valuesCategory)}
+          ${p.specificLesson ? field('Lesson', p.specificLesson) : ''}
+          ${field('Cause &amp; Effect', p.causeEffectEnabled ? 'On' : 'Off')}
+          ${supporting ? field('Supporting Chars', supporting) : ''}
+          ${petStr ? field('Pet', petStr) : ''}
+          ${p.illustrationStyle ? field('Illustration', p.illustrationStyle.length > 60 ? p.illustrationStyle.slice(0,60) + '…' : p.illustrationStyle) : ''}
+        </div>
+        <div class="sp-edit-row">
+          <p class="sp-hint">Edit settings below, then click Regenerate to create a new version.</p>
+          <div class="sp-inline-fields">
+            <div class="sp-inline-field">
+              <label class="sp-inline-label">Tone</label>
+              <input type="text" id="sp-tone-input" class="text-input" value="${escapeHtml(p.tone)}" placeholder="e.g. Funny, Gentle, Adventurous…" />
+            </div>
+            <div class="sp-inline-field">
+              <label class="sp-inline-label">Language</label>
+              <div class="pills sp-pills" id="sp-lang-pills">
+                <div class="pill${p.lang === 'English' ? ' selected' : ''}" data-value="English" onclick="selectPill(this,'sp-lang-pills')">English</div>
+                <div class="pill${p.lang === 'Filipino' ? ' selected' : ''}" data-value="Filipino" onclick="selectPill(this,'sp-lang-pills')">Filipino</div>
+              </div>
+            </div>
+            <div class="sp-inline-field">
+              <label class="sp-inline-label">Pages</label>
+              <div class="pills sp-pills" id="sp-length-pills">
+                ${[6,8,10,12,14].map(n => `<div class="pill${p.pageCount === n ? ' selected' : ''}" data-value="${n}" onclick="selectPill(this,'sp-length-pills')">${n}</div>`).join('')}
+              </div>
+            </div>
+          </div>
+          <button class="btn-primary mt-4 flex items-center gap-2" onclick="regenerateStory()" id="regen-story-btn">
+            <span class="material-symbols-outlined">refresh</span>
+            Regenerate Story
+          </button>
+        </div>
+      </div>
+    </details>`;
+}
+
+async function regenerateStory() {
+  if (!state.character || !state.storyParams) return;
+  const p = state.storyParams;
+
+  // Read any overrides from the inline settings panel
+  const toneOverride = document.getElementById('sp-tone-input')?.value?.trim();
+  const langOverride = getSelected('sp-lang-pills');
+  const pageCountOverride = parseInt(getSelected('sp-length-pills') || '');
+
+  const tone = toneOverride || p.tone;
+  const lang = langOverride || p.lang;
+  const pageCount = pageCountOverride || p.pageCount;
+  const isBilingual = lang === 'English' || p.isBilingual;
+
+  // Update storyParams with new values
+  state.storyParams = { ...p, tone, lang, pageCount, isBilingual };
+
+  const btn = document.getElementById('regen-story-btn');
+  if (btn) btn.disabled = true;
+
+  const interval = showLoading('Isinusulat ang bagong kwento... ✍️');
+  try {
+    const story = await api('POST', '/api/generate-story', {
+      character: state.character,
+      tone,
+      setting: p.setting,
+      settingFilipino: p.settingFilipino,
+      ageRange: p.ageRange,
+      pageCount,
+      valuesCategory: p.valuesCategory,
+      specificLesson: p.specificLesson,
+      causeEffectEnabled: p.causeEffectEnabled,
+      language: lang,
+      isBilingual,
+      supportingChars: p.supportingChars,
+      pet: p.pet,
+      illustrationStyle: p.illustrationStyle,
+    });
+    state.story = story;
+    state.characters = [];
+    hideLoading(interval);
+    document.getElementById('story-settings-details')?.removeAttribute('open');
+    renderBook();
+  } catch (err) {
+    hideLoading(interval);
+    if (btn) btn.disabled = false;
+    alert(err.message || 'Regeneration failed. Please try again.');
+  }
+}
+
 // ═══════════════════════════════════════════════════════════════
 // BOOK RENDERING
 // ═══════════════════════════════════════════════════════════════
@@ -1714,28 +2041,66 @@ function renderBook() {
   const story = state.story;
   if (!story) return;
 
+  // Apply selected story font
+  const font = state.storyFont || getSelected('font-pills') || 'Baloo 2';
+  state.storyFont = font;
+  document.querySelectorAll('.story-text').forEach(el => el.style.fontFamily = `'${font}', sans-serif`);
+
+  const canGenerate = state.subscription?.imagesPerMonth !== 0;
+
+  renderStorySettings();
+
   document.getElementById('story-title-display').textContent = story.title || 'My Story';
   document.getElementById('story-badges').innerHTML = `
     <span class="badge badge-blue">${escapeHtml(state.character?.type || '')}</span>
-    <span class="badge badge-green">${getSelected('lang-pills') || 'English'}</span>
-    <span class="badge badge-coral">${getSelected('age-pills') || '4-6'}</span>`;
+    <span class="badge badge-green">${escapeHtml(story.language || getSelected('lang-pills') || 'English')}</span>
+    <span class="badge badge-coral">${escapeHtml(getSelected('age-pills') || '4-6')}</span>`;
 
   document.getElementById('back-cover-summary').innerHTML = `
     <p style="font-family:'Plus Jakarta Sans',sans-serif;color:#3a3a00;font-size:17px;font-weight:700;margin-bottom:8px;">📖 ${escapeHtml(story.title)}</p>
     <p style="color:#676804;">${escapeHtml(story.backCoverSummary || '')}</p>`;
 
   const pagesEl = document.getElementById('story-pages-container');
-  pagesEl.innerHTML = (story.pages || []).map(p => `
+
+  // Cover card
+  const coverHtml = `
+    <div class="story-page-card" id="page-card-cover" style="border:2px dashed #ac4218;">
+      <div class="page-number-badge" style="background:#006f7e;">Cover</div>
+      <p style="font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:15px;color:#3a3a00;margin-bottom:4px;">${escapeHtml(story.title)}</p>
+      ${story.titleEnglish ? `<p style="font-size:13px;color:#676804;font-style:italic;margin-bottom:8px;">${escapeHtml(story.titleEnglish)}</p>` : ''}
+      <div id="img-result-cover" class="mt-2"></div>
+      ${canGenerate ? `<div class="page-actions">
+        <button class="btn-ghost" style="font-size:13px;padding:6px 14px;" id="gen-btn-cover" onclick="generateCoverImage()">✨ Generate Cover</button>
+        <details class="inline-block" style="font-size:12px;">
+          <summary class="cursor-pointer text-on-surface-variant hover:text-primary ml-2">Image Prompt ▾</summary>
+          <div class="prompt-text mt-2 p-3 bg-surface-container rounded-xl text-xs">${escapeHtml(buildCoverPrompt())}</div>
+        </details>
+      </div>` : ''}
+    </div>`;
+
+  // Page cards with inline image generation
+  const pageCardsHtml = (story.pages || []).map(p => `
     <div class="story-page-card" id="page-card-${p.pageNumber}">
       <div class="page-number-badge">${p.pageNumber}</div>
-      <p class="story-text">${escapeHtml(p.text)}</p>
+      <p class="story-text" style="font-family:'${escapeHtml(font)}',sans-serif;">${escapeHtml(p.text)}</p>
       ${p.textEnglish ? `<p class="translation-text">${escapeHtml(p.textEnglish)}</p>` : ''}
       ${p.causeEffect ? `<div class="cause-effect-box">⚡ <strong>Cause &amp; Effect:</strong> ${escapeHtml(p.causeEffect.wrongChoice)} → ${escapeHtml(p.causeEffect.consequence)} → ${escapeHtml(p.causeEffect.resolution)}</div>` : ''}
-      ${p.illustrationIdea ? `<div class="illus-idea">🖼️ <em>${escapeHtml(p.illustrationIdea)}</em></div>` : ''}
+      ${p.charactersOnPage?.length ? `<div class="flex flex-wrap gap-1 mt-2">${p.charactersOnPage.map(n => `<span class="badge badge-blue" style="font-size:11px;">👤 ${escapeHtml(n)}</span>`).join('')}</div>` : ''}
+      <div id="img-result-${p.pageNumber}" class="mt-2"></div>
       <div class="page-actions">
-        <button class="btn-ghost" style="font-size:13px;padding:6px 14px;" onclick="regeneratePage(${p.pageNumber})">🔄 Regenerate</button>
+        ${canGenerate ? `<button class="btn-ghost" style="font-size:13px;padding:6px 14px;" id="gen-btn-${p.pageNumber}" onclick="generatePageImage(${p.pageNumber})">✨ Generate Image</button>` : ''}
+        <button class="btn-ghost" style="font-size:13px;padding:6px 14px;" onclick="regeneratePage(${p.pageNumber})">🔄 Regenerate Text</button>
+        <details class="inline-block" style="font-size:12px;">
+          <summary class="cursor-pointer text-on-surface-variant hover:text-primary">Image Prompt ▾</summary>
+          <div class="mt-2 space-y-1.5">
+            <div class="prompt-text p-3 bg-surface-container rounded-xl text-xs">${escapeHtml(p.imagePrompt || '')}</div>
+            <button class="copy-btn text-xs" onclick="navigator.clipboard.writeText(${JSON.stringify(buildImagePrompt(p.pageNumber))}).then(()=>this.textContent='✅ Copied!').catch(()=>navigator.clipboard.writeText(document.querySelector('#page-card-${p.pageNumber} .prompt-text').textContent).then(()=>this.textContent='✅ Copied!'))">📋 Copy Full Prompt</button>
+          </div>
+        </details>
       </div>
     </div>`).join('');
+
+  pagesEl.innerHTML = coverHtml + pageCardsHtml;
 
   if (story.moral) {
     const moralEl = document.getElementById('moral-banner');
@@ -1745,6 +2110,25 @@ function renderBook() {
       ${story.moralEnglish ? `<p style="opacity:0.85;font-size:14px;margin-top:6px;">${escapeHtml(story.moralEnglish)}</p>` : ''}`;
   }
 
+  // Generate All button in story header area
+  if (canGenerate) {
+    const total = (story.pages || []).length;
+    const genAllHtml = `
+      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-surface-container-low rounded-xl p-4 mb-4">
+        <div>
+          <p class="font-label font-bold text-sm text-on-surface">✨ Generate All Images</p>
+          <p class="text-xs text-on-surface-variant mt-0.5">Character blueprint is applied to every page for consistency.</p>
+        </div>
+        <button id="generate-all-btn" class="btn-primary flex-shrink-0 flex items-center gap-2 py-2.5 px-5 text-sm" onclick="generateAllImages()">
+          <span class="material-symbols-outlined text-base" style="font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 20;">auto_fix_high</span>
+          Generate All ${total} Pages
+        </button>
+      </div>`;
+    pagesEl.insertAdjacentHTML('afterbegin', genAllHtml);
+  } else {
+    pagesEl.insertAdjacentHTML('afterbegin', `<div class="upgrade-banner mb-4"><h3>✨ Generate Images In-App</h3><p>Upgrade to Pro to generate images directly inside Kwento Ko.</p><button onclick="openModal('register')">Upgrade to Pro</button></div>`);
+  }
+
   const compileEl = document.getElementById('compile-cta');
   if (state.subscription?.canCompileBook) {
     compileEl.innerHTML = `<div style="text-align:center;margin:20px 0;"><button class="btn-primary" onclick="openCompileModal()">📚 Compile My Book</button></div>`;
@@ -1752,78 +2136,205 @@ function renderBook() {
     compileEl.innerHTML = `<div class="upgrade-banner"><h3>📚 Compile as a PDF Book</h3><p>Upgrade to Pro to compile your story into a print-ready book.</p><button onclick="openModal('register')">Upgrade to Pro — ₱199/mo</button></div>`;
   }
 
-  renderPrompts();
+  // Build characters state from story data
+  buildCharactersState();
+
   renderCharacterCard();
   renderDiscussionGuide();
 }
 
-function renderPrompts() {
+function buildCoverPrompt() {
+  const story = state.story;
+  if (!story) return '';
+  const allBlueprints = buildAllCharacterBlueprints();
+  const illustStyle = story.illustrationStyle || getIllusStyle() || 'whimsical digital illustration, soft rounded shapes, flat pastel color palette, subtle traditional watercolor texture, children\'s book illustration style, warm and friendly atmosphere';
+  const charSection = allBlueprints ? `\n\nCharacter descriptions — use EXACTLY these appearances throughout:\n${allBlueprints}` : '';
+  const settingBlueprint = story.settingBlueprintPrompt
+    ? `SETTING (use consistently): ${story.settingBlueprintPrompt}\n\n`
+    : '';
+  return `${settingBlueprint}Children's book cover illustration for "${story.title}". Show all main characters prominently with their exact described appearances. Full bleed artwork, no text or lettering in the image.${charSection}\n\nStyle: ${illustStyle}. --portrait orientation, 3:4 aspect ratio, taller than wide`;
+}
+
+function buildAllCharacterBlueprints() {
+  const parts = [];
+  const mainName = state.character?.name || state.story?.character?.name || '';
+  if (state.story?.characterBlueprintPrompt) {
+    parts.push(`CHARACTER ${mainName ? '[' + mainName + ']' : '[Main Character]'}: ${state.story.characterBlueprintPrompt}`);
+  }
+  (state.characters || []).filter(c => c.id !== 'main' && c.blueprintPrompt).forEach(c => {
+    parts.push(`CHARACTER [${c.name}]${c.role ? ' (' + c.role + ')' : ''}: ${c.blueprintPrompt}`);
+  });
+  return parts.join(' | ');
+}
+
+function buildCharactersState() {
   const story = state.story;
   if (!story) return;
-  const isMJ = getSelected('prompt-style-pills') === 'midjourney';
-  const formatPrompt = p => isMJ ? p + ' --ar 16:9 --style raw --v 6' : p;
+  const existing = state.characters || [];
+  const chars = [];
+
+  // Main character
+  const mainExisting = existing.find(c => c.id === 'main') || {};
+  chars.push({
+    id: 'main',
+    name: state.character?.name || story.character?.name || 'Main Character',
+    role: (state.character?.gender ? state.character.gender + ' · ' : '') + (state.character?.type || story.character?.type || 'Main Character'),
+    blueprintPrompt: story.characterBlueprintPrompt || '',
+    portrait: mainExisting.portrait || null,
+  });
+
+  // Merge AI-returned supporting chars with user-entered chars (deduped by name)
+  const aiChars = story.supportingCharacters || [];
+  const userChars = getSupportingChars(); // reads .sc-card DOM elements; returns [] post-story (DOM may be gone)
+  const allSupporting = [...aiChars];
+  userChars.forEach(uc => {
+    if (uc.name && !allSupporting.find(ac => ac.name.toLowerCase() === uc.name.toLowerCase())) {
+      allSupporting.push({ name: uc.name, role: uc.relationship || 'Supporting Character', gender: uc.gender, blueprintPrompt: `${uc.name}, ${uc.relationship || 'supporting character'}${uc.gender ? ', ' + uc.gender : ''}` });
+    }
+  });
+  // Also pull supporting chars from storyParams (captured at generation time, survives DOM changes)
+  (state.storyParams?.supportingChars || []).forEach(uc => {
+    if (uc.name && !allSupporting.find(ac => ac.name.toLowerCase() === uc.name.toLowerCase())) {
+      allSupporting.push({ name: uc.name, role: uc.relationship || 'Supporting Character', gender: uc.gender, blueprintPrompt: `${uc.name}, ${uc.relationship || 'supporting character'}${uc.gender ? ', ' + uc.gender : ''}` });
+    }
+  });
+  // Pet — deduplicate against AI chars that may have appended the species
+  // e.g. user enters "Clifford", AI returns "Clifford the Dog" → same pet, keep AI's richer blueprint
+  const pet = story.pet || state.storyParams?.pet;
+  if (pet?.name) {
+    const petNameLower = pet.name.toLowerCase();
+    const aiHasPet = allSupporting.find(c => {
+      const n = c.name.toLowerCase();
+      return n === petNameLower || n.startsWith(petNameLower + ' ') || n.startsWith(petNameLower + ',');
+    });
+    if (!aiHasPet) {
+      allSupporting.push({ name: pet.name, role: `Pet ${pet.type || ''}`.trim(), gender: '', blueprintPrompt: `${pet.name}, a pet ${pet.type || 'animal'}` });
+    }
+  }
+
+  // 4th source: mine charactersOnPage from every story page — catches any character
+  // the AI introduced in the story but omitted from supportingCharacters
+  const mainName = (state.character?.name || story.character?.name || '').toLowerCase();
+  const seenNames = new Set(allSupporting.map(c => c.name.toLowerCase()));
+  (story.pages || []).forEach(page => {
+    (page.charactersOnPage || []).forEach(name => {
+      if (!name) return;
+      const key = name.toLowerCase();
+      if (key === mainName || seenNames.has(key)) return;
+      seenNames.add(key);
+      allSupporting.push({ name, role: 'Supporting Character', gender: '', blueprintPrompt: `${name}, a supporting character in the story` });
+    });
+  });
+
+  allSupporting.forEach((sc, i) => {
+    const id = `supporting_${i}`;
+    const prevExisting = existing.find(c => c.id === id) || {};
+    chars.push({
+      id,
+      name: sc.name,
+      role: (sc.role || 'Supporting Character') + (sc.gender ? ` · ${sc.gender}` : ''),
+      blueprintPrompt: sc.blueprintPrompt || '',
+      portrait: prevExisting.portrait || null,
+    });
+  });
+
+  state.characters = chars;
+
+  // Also cache illustration style on the story object for restoring later
+  if (story && !story.illustrationStyle) {
+    story.illustrationStyle = getIllusStyle();
+  }
+}
+
+function renderCharacters() {
+  const container = document.getElementById('characters-container');
+  if (!container) return;
+  if (!state.story) {
+    container.innerHTML = `<div class="text-center py-16 text-on-surface-variant">Generate a story first to see your characters.</div>`;
+    return;
+  }
+
+  const chars = state.characters || [];
+  if (!chars.length) {
+    container.innerHTML = `<div class="text-center py-16 text-on-surface-variant">No characters found.</div>`;
+    return;
+  }
+
   const canGenerate = state.subscription?.imagesPerMonth !== 0;
+  const allHavePortraits = chars.every(c => c.portrait);
+  const portraitCount = chars.filter(c => c.portrait).length;
 
-  const container = document.getElementById('prompts-container');
-  let html = '';
-
-  // ── Generate All button ──
-  if (canGenerate && (story.pages || []).length > 0) {
-    const total = story.pages.length;
-    html += `
-      <div class="bg-surface-container-low rounded-xl p-4 mb-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+  let html = `
+    <div class="max-w-3xl mx-auto px-4 py-6 space-y-5">
+      <div class="bg-surface-container-low rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div>
-          <p class="font-label font-bold text-sm text-on-surface">✨ Generate All Page Images</p>
-          <p class="text-xs text-on-surface-variant mt-0.5">Character blueprint is automatically applied to every page for consistency.</p>
+          <p class="font-headline font-bold text-on-surface">🎨 Character Portraits</p>
+          <p class="text-sm text-on-surface-variant mt-0.5">Generate portraits for each character first — they'll be embedded in every page image prompt for visual consistency.</p>
+          <p class="text-xs text-primary font-semibold mt-1" id="portrait-count-display">${portraitCount}/${chars.length} portraits generated</p>
         </div>
-        <button id="generate-all-btn" class="btn-primary flex-shrink-0 flex items-center gap-2 py-2.5 px-5 text-sm" onclick="generateAllImages()">
-          <span class="material-symbols-outlined text-base" style="font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 20;">auto_fix_high</span>
-          Generate All ${total} Pages
-        </button>
+        ${canGenerate ? `<button class="btn-primary flex-shrink-0 text-sm py-2.5 px-5" onclick="generateAllPortraits()">✨ Generate All Portraits</button>` : ''}
       </div>`;
-  }
 
-  // ── Character blueprint card ──
-  if (story.characterBlueprintPrompt) {
-    html += `<div class="prompt-card" style="border-color:#ac4218;">
-      <strong style="font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;color:#3a3a00;">🎨 Character Blueprint — applied to every generated image</strong>
-      <p class="prompt-text" style="margin-top:8px;">${escapeHtml(formatPrompt(story.characterBlueprintPrompt))}</p>
-      <div class="prompt-actions">
-        <button class="copy-btn" onclick="navigator.clipboard.writeText(this.closest('.prompt-card').querySelector('.prompt-text').textContent).then(()=>this.textContent='✅ Copied!')">📋 Copy</button>
-      </div>
-    </div>`;
-  }
-
-  // ── Per-page prompt cards ──
-  (story.pages || []).forEach(p => {
-    html += `<div class="prompt-card" id="prompt-card-${p.pageNumber}">
-      <strong style="font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;color:#3a3a00;">Page ${p.pageNumber}</strong>
-      <p class="prompt-text" style="margin-top:6px;">${escapeHtml(formatPrompt(p.imagePrompt || ''))}</p>
-      <div class="prompt-actions">
-        <button class="copy-btn" onclick="navigator.clipboard.writeText(this.closest('.prompt-card').querySelector('.prompt-text').textContent).then(()=>this.textContent='✅ Copied!')">📋 Copy</button>
-        ${canGenerate ? `<button class="btn-ghost" style="font-size:13px;padding:6px 14px;" id="gen-btn-${p.pageNumber}" onclick="generatePageImage(${p.pageNumber})">✨ Generate</button>` : ''}
-      </div>
-      <div id="img-result-${p.pageNumber}" class="mt-2"></div>
-    </div>`;
+  chars.forEach(char => {
+    html += `
+      <div class="story-page-card" id="char-card-${char.id}">
+        <div class="flex items-start gap-4">
+          <div class="w-24 h-24 rounded-xl overflow-hidden bg-surface-container flex-shrink-0 flex items-center justify-center" id="portrait-${char.id}">
+            ${char.portrait
+              ? `<img src="${char.portrait.startsWith('data:') ? char.portrait : `data:image/png;base64,${char.portrait}`}" style="width:100%;height:100%;object-fit:cover;" />`
+              : `<span class="text-3xl">${char.id === 'main' ? '⭐' : '👤'}</span>`}
+          </div>
+          <div class="flex-1 min-w-0">
+            <h3 class="font-headline font-bold text-on-surface text-base">${escapeHtml(char.name)}</h3>
+            <p class="text-xs text-on-surface-variant font-medium mb-2">${escapeHtml(char.role)}</p>
+            ${char.blueprintPrompt ? `<details><summary class="text-xs text-primary cursor-pointer font-semibold">Visual Reference ▾</summary><p class="text-xs text-on-surface-variant mt-1 leading-relaxed">${escapeHtml(char.blueprintPrompt)}</p></details>` : ''}
+            ${canGenerate ? `<div class="flex gap-2 mt-3 flex-wrap">
+              <button class="btn-ghost" style="font-size:12px;padding:5px 12px;" onclick="generateCharacterPortrait('${char.id}')">
+                ${char.portrait ? '🔄 Regenerate' : '✨ Generate Portrait'}
+              </button>
+            </div>` : ''}
+          </div>
+        </div>
+      </div>`;
   });
 
   if (!canGenerate) {
-    html += `<div class="upgrade-banner"><h3>✨ Generate Images In-App</h3><p>Upgrade to Pro to generate images directly inside Kwento Ko.</p><button onclick="openModal('register')">Upgrade to Pro</button></div>`;
+    html += `<div class="upgrade-banner"><h3>✨ Generate Character Portraits</h3><p>Upgrade to Pro to generate portraits for your characters.</p><button onclick="openModal('register')">Upgrade to Pro</button></div>`;
   }
 
+  html += `</div>`;
   container.innerHTML = html;
 }
 
 function renderCharacterCard() {
   const char = state.character;
   if (!char) return;
-  document.getElementById('character-card-print').innerHTML = `
+  const el = document.getElementById('character-card-print');
+
+  // Detect if character has meaningful data (not just an empty fallback)
+  const hasProfile = !!(char.catchphrase || char.personalityDescription || char.appearance || char.type);
+
+  if (!hasProfile) {
+    // Show partial card using blueprint prompt if available
+    const blueprint = state.story?.characterBlueprintPrompt || '';
+    el.innerHTML = `
+      <h2 style="font-family:'Plus Jakarta Sans',sans-serif;color:#3a3a00;text-align:center;font-size:22px;font-weight:800;">${escapeHtml(char.name)}</h2>
+      ${blueprint
+        ? `<p style="color:#676804;font-size:13px;margin:12px 0;line-height:1.6;">${escapeHtml(blueprint)}</p>`
+        : ''}
+      <div style="background:#fefdc1;border-radius:12px;padding:14px 16px;margin-top:12px;text-align:center;border-left:4px solid #ac4218;">
+        <p style="font-size:13px;color:#676804;margin:0;">Character profile was not saved with this story.<br>Start a new story to get a full profile card.</p>
+      </div>`;
+    return;
+  }
+
+  el.innerHTML = `
     <h2 style="font-family:'Plus Jakarta Sans',sans-serif;color:#3a3a00;text-align:center;font-size:22px;font-weight:800;">${escapeHtml(char.name)}</h2>
-    <p style="text-align:center;color:#676804;font-family:'Plus Jakarta Sans',sans-serif;margin-bottom:12px;font-size:13px;font-weight:600;">${escapeHtml(char.type)}</p>
-    <div class="catchphrase-bubble" style="text-align:center;">"${escapeHtml(char.catchphrase)}"</div>
-    <p style="margin:12px 0;color:#3a3a00;">${escapeHtml(char.personalityDescription)}</p>
-    <p style="color:#676804;font-size:14px;">👁️ ${escapeHtml(char.appearance)}</p>
-    <p style="color:#676804;font-size:14px;margin-top:8px;">🌟 ${escapeHtml(char.funFact)}</p>
+    ${char.type ? `<p style="text-align:center;color:#676804;font-family:'Plus Jakarta Sans',sans-serif;margin-bottom:12px;font-size:13px;font-weight:600;">${escapeHtml(char.type)}</p>` : ''}
+    ${char.catchphrase ? `<div class="catchphrase-bubble" style="text-align:center;">"${escapeHtml(char.catchphrase)}"</div>` : ''}
+    ${char.personalityDescription ? `<p style="margin:12px 0;color:#3a3a00;">${escapeHtml(char.personalityDescription)}</p>` : ''}
+    ${char.appearance ? `<p style="color:#676804;font-size:14px;">👁️ ${escapeHtml(char.appearance)}</p>` : ''}
+    ${char.funFact ? `<p style="color:#676804;font-size:14px;margin-top:8px;">🌟 ${escapeHtml(char.funFact)}</p>` : ''}
     ${char.stats ? `<div style="margin-top:12px;">${Object.entries(char.stats).map(([k,v]) => `
       <div class="stat-bar-wrap"><div class="stat-label"><span>${escapeHtml(k)}</span><span>${escapeHtml(v)}%</span></div>
       <div class="stat-bar"><div class="stat-bar-fill" style="width:${escapeHtml(v)}%"></div></div></div>`).join('')}</div>` : ''}`;
@@ -1881,7 +2392,7 @@ async function regeneratePage(pageNum) {
     const page = await api('POST', '/api/regenerate-page', {
       character: state.character,
       pageNumber: pageNum,
-      tone: getSelected('tone-pills') || 'Gentle',
+      tone: state.storyParams?.tone || getTone(),
       language: getSelected('lang-pills') || 'English',
       isBilingual: document.getElementById('bilingual-toggle').checked,
     });
@@ -1904,10 +2415,215 @@ async function regeneratePage(pageNum) {
 function buildImagePrompt(pageNum) {
   const story = state.story;
   const page = story?.pages?.find(p => p.pageNumber === pageNum);
-  const blueprint = story?.characterBlueprintPrompt || '';
   const scene = page?.imagePrompt || '';
-  // Always prepend blueprint so every image uses the same character reference
-  return blueprint ? `${blueprint}. Scene: ${scene}` : scene;
+
+  // Only include blueprints for characters that appear on THIS page
+  const charsOnPage = page?.charactersOnPage || null;
+  let blueprintParts = [];
+  if (story?.characterBlueprintPrompt) {
+    // Always include main character blueprint if they appear (or if no page list)
+    const mainName = state.character?.name || '';
+    if (!charsOnPage || charsOnPage.includes(mainName)) {
+      blueprintParts.push(`CHARACTER [${mainName || 'Main Character'}]: ${story.characterBlueprintPrompt}`);
+    }
+  }
+  (state.characters || []).filter(c => c.id !== 'main' && c.blueprintPrompt).forEach(c => {
+    if (!charsOnPage || charsOnPage.includes(c.name)) {
+      blueprintParts.push(`CHARACTER [${c.name}]${c.role ? ' (' + c.role + ')' : ''}: ${c.blueprintPrompt}`);
+    }
+  });
+  const blueprints = blueprintParts.join(' | ');
+
+  // Illustration style from story data or current selection
+  const illustStyle = story?.illustrationStyle || getIllusStyle() || '';
+  const styleSuffix = illustStyle
+    ? illustStyle
+    : 'whimsical digital illustration, soft rounded shapes, flat pastel color palette, subtle traditional watercolor texture, children\'s book illustration style, warm and friendly atmosphere';
+
+  const settingBlueprint = story?.settingBlueprintPrompt
+    ? `SETTING (use consistently): ${story.settingBlueprintPrompt}\n\n`
+    : '';
+  const charSection = blueprints ? `\n\nCharacter descriptions — use EXACTLY these appearances:\n${blueprints}` : '';
+  return `${settingBlueprint}Scene: ${scene}.${charSection}\n\nStyle: ${styleSuffix}. No text or lettering in the image.`;
+}
+
+// Map character IDs to unique negative page indices for portrait persistence
+function charIdToPageIndex(charId) {
+  if (charId === 'main') return -1;
+  const match = charId.match(/^supporting_(\d+)$/);
+  return match ? -(parseInt(match[1]) + 2) : null;
+}
+function pageIndexToCharId(idx) {
+  if (idx === -1) return 'main';
+  if (idx <= -2) return `supporting_${-idx - 2}`;
+  return null;
+}
+
+// Extract base64 from portrait data URL for sending as reference image
+function getPortraitBase64(portrait) {
+  if (!portrait) return null;
+  const match = portrait.match(/^data:(image\/\w+);base64,(.+)$/);
+  if (match) return { mimeType: match[1], base64: match[2] };
+  return { mimeType: 'image/png', base64: portrait };
+}
+
+// Compress a portrait data URL to max 512px JPEG 70% (~30-50KB) before sending as reference.
+// Keeps payload small enough to stay under nginx body limits.
+function compressPortraitForUpload(dataUrl) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const maxDim = 512;
+      const scale = Math.min(maxDim / img.width, maxDim / img.height, 1);
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      const compressed = canvas.toDataURL('image/jpeg', 0.7);
+      const match = compressed.match(/^data:(image\/[\w+]+);base64,(.+)$/);
+      resolve(match ? { mimeType: match[1], base64: match[2] } : null);
+    };
+    img.onerror = () => resolve(null);
+    img.src = dataUrl.startsWith('data:') ? dataUrl : `data:image/png;base64,${dataUrl}`;
+  });
+}
+
+// Get reference image for the PRIMARY focal character on a specific page (single ref only).
+// Priority: main character > first supporting character on the page.
+// Uses fal CDN URL directly if available (avoids re-upload); falls back to compressed base64.
+async function getPageReferenceImages(pageNum) {
+  const story = state.story;
+  const page = story?.pages?.find(p => p.pageNumber === pageNum);
+  const charsOnPage = page?.charactersOnPage || null;
+
+  // Sort: main character (id === 'main') first, then supporting
+  const sorted = [...(state.characters || [])].sort((a, b) => (a.id === 'main' ? -1 : b.id === 'main' ? 1 : 0));
+
+  for (const c of sorted) {
+    if (!c.portrait) continue;
+    // Main character always included — they appear on every page even if not listed in charactersOnPage.
+    // Supporting characters are filtered by the page list.
+    if (c.id !== 'main' && charsOnPage && !charsOnPage.includes(c.name)) continue;
+    if (c.portraitUrl) {
+      return [{ url: c.portraitUrl, name: c.name, role: c.role }];
+    }
+    const compressed = await compressPortraitForUpload(c.portrait);
+    if (compressed) return [{ ...compressed, name: c.name, role: c.role }];
+  }
+  return [];
+}
+
+// Get reference image for the main/focal character (cover image — single ref only).
+async function getAllReferenceImages() {
+  const sorted = [...(state.characters || [])].sort((a, b) => (a.id === 'main' ? -1 : b.id === 'main' ? 1 : 0));
+  for (const c of sorted) {
+    if (!c.portrait) continue;
+    if (c.portraitUrl) return [{ url: c.portraitUrl, name: c.name, role: c.role }];
+    const compressed = await compressPortraitForUpload(c.portrait);
+    if (compressed) return [{ ...compressed, name: c.name, role: c.role }];
+  }
+  return [];
+}
+
+async function generateCoverImage() {
+  const resultEl = document.getElementById('img-result-cover');
+  const btn = document.getElementById('gen-btn-cover');
+  if (!resultEl) return;
+
+  resultEl.innerHTML = `<div class="flex items-center gap-2 mt-2 text-sm text-on-surface-variant">
+    <div class="w-4 h-4 rounded-full border-2 border-primary-container border-t-primary animate-spin flex-shrink-0"></div>
+    Generating cover...
+  </div>`;
+  if (btn) { btn.disabled = true; btn.textContent = '⏳'; }
+
+  try {
+    const referenceImages = await getAllReferenceImages();
+    const data = await api('POST', '/api/generate-image', {
+      promptText: buildCoverPrompt(),
+      storyId: state.savedStoryId,
+      pageIndex: 0,
+      referenceImages: referenceImages.length ? referenceImages : undefined,
+      seed: state.imageSeed,
+    });
+    if (data.seed != null && state.imageSeed === null) state.imageSeed = data.seed;
+    resultEl.innerHTML = '';
+    const coverWrap = document.createElement('div');
+    coverWrap.style.cssText = 'position:relative;display:inline-block;max-width:100%;margin-top:8px;';
+    const img = document.createElement('img');
+    img.style.cssText = 'max-width:100%;border-radius:1rem;display:block;';
+    img.src = data.imageUrl;
+    coverWrap.appendChild(img);
+    // Title overlay
+    const titleOverlay = document.createElement('div');
+    titleOverlay.style.cssText = 'position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,0.72));padding:18px 14px 12px;border-radius:0 0 1rem 1rem;text-align:center;';
+    titleOverlay.innerHTML = `<span style="font-family:\'Baloo 2\',sans-serif;font-size:15px;font-weight:800;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,0.7);line-height:1.3;">${escapeHtml(state.story?.title || '')}</span>`;
+    coverWrap.appendChild(titleOverlay);
+    resultEl.appendChild(coverWrap);
+    const regenBtn = document.createElement('button');
+    regenBtn.className = 'btn-ghost mt-2';
+    regenBtn.style.cssText = 'font-size:12px;padding:5px 12px;';
+    regenBtn.textContent = '🔄 Regenerate';
+    regenBtn.onclick = () => generateCoverImage();
+    resultEl.appendChild(regenBtn);
+  } catch (err) {
+    resultEl.innerHTML = `<p style="color:#b33938;font-size:13px;margin-top:6px;">${escapeHtml(err.message)}</p>`;
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '✨ Generate Cover'; }
+  }
+}
+
+async function generateCharacterPortrait(charId) {
+  const char = (state.characters || []).find(c => c.id === charId);
+  if (!char) return;
+
+  const portraitEl = document.getElementById(`portrait-${charId}`);
+  const cardEl = document.getElementById(`char-card-${charId}`);
+  if (portraitEl) portraitEl.innerHTML = `<div class="w-8 h-8 rounded-full border-2 border-primary-container border-t-primary animate-spin"></div>`;
+
+  const prompt = `Character portrait of ${char.name} (${char.role}). ${char.blueprintPrompt}. Full body portrait, neutral background, whimsical digital illustration, soft rounded shapes, flat pastel color palette, children's book illustration style, warm friendly expression, consistent character design reference sheet.`;
+
+  try {
+    const data = await api('POST', '/api/generate-image', {
+      promptText: prompt,
+      storyId: state.savedStoryId,
+      pageIndex: charIdToPageIndex(charId),
+    });
+
+    // Store portrait + fal CDN URL in state
+    const idx = state.characters.findIndex(c => c.id === charId);
+    if (idx !== -1) {
+      state.characters[idx].portrait = data.imageUrl;
+      if (data.falImageUrl) state.characters[idx].portraitUrl = data.falImageUrl;
+    }
+
+    // Update the portrait element
+    if (portraitEl) {
+      portraitEl.innerHTML = `<img src="${escapeHtml(data.imageUrl)}" style="width:100%;height:100%;object-fit:cover;" />`;
+    }
+    // Refresh button text
+    if (cardEl) {
+      const genBtn = cardEl.querySelector('button');
+      if (genBtn) genBtn.textContent = '🔄 Regenerate';
+    }
+    // Update the portrait count display
+    const countEl = document.getElementById('portrait-count-display');
+    if (countEl) {
+      const total = state.characters.length;
+      const done = state.characters.filter(c => c.portrait).length;
+      countEl.textContent = `${done}/${total} portraits generated`;
+    }
+  } catch (err) {
+    if (portraitEl) portraitEl.innerHTML = `<span class="text-3xl">${charId === 'main' ? '⭐' : '👤'}</span>`;
+    alert('Portrait generation failed: ' + err.message);
+  }
+}
+
+async function generateAllPortraits() {
+  const chars = state.characters || [];
+  for (const char of chars) {
+    await generateCharacterPortrait(char.id);
+    if (char !== chars[chars.length - 1]) await new Promise(r => setTimeout(r, 800));
+  }
 }
 
 async function generatePageImage(pageNum) {
@@ -1922,11 +2638,15 @@ async function generatePageImage(pageNum) {
   if (btn) { btn.disabled = true; btn.textContent = '⏳'; }
 
   try {
+    const referenceImages = await getPageReferenceImages(pageNum);
     const data = await api('POST', '/api/generate-image', {
       promptText: buildImagePrompt(pageNum),
       storyId: state.savedStoryId,
       pageIndex: pageNum,
+      referenceImages: referenceImages.length ? referenceImages : undefined,
+      seed: state.imageSeed,
     });
+    if (data.seed != null && state.imageSeed === null) state.imageSeed = data.seed;
     resultEl.innerHTML = '';
     const img = document.createElement('img');
     img.style.cssText = 'max-width:100%;border-radius:1rem;margin-top:8px;display:block;';
@@ -1972,11 +2692,15 @@ async function generateAllImages() {
     if (btn) { btn.disabled = true; btn.textContent = '⏳'; }
 
     try {
+      const referenceImages = await getPageReferenceImages(p.pageNumber);
       const data = await api('POST', '/api/generate-image', {
         promptText: buildImagePrompt(p.pageNumber),
         storyId: state.savedStoryId,
         pageIndex: p.pageNumber,
+        referenceImages: referenceImages.length ? referenceImages : undefined,
+        seed: state.imageSeed,
       });
+      if (data.seed != null && state.imageSeed === null) state.imageSeed = data.seed;
       if (resultEl) {
         resultEl.innerHTML = '';
         const img = document.createElement('img');
@@ -2016,18 +2740,26 @@ async function generateAllImages() {
 
 async function saveStory() {
   if (!state.story || !state.token) { openModal('register'); return; }
+  // Embed character metadata and font; strip portrait base64 (too large, regeneratable)
+  const storyDataWithChar = {
+    ...state.story,
+    character: state.character,
+    storyFont: state.storyFont,
+    characters: (state.characters || []).map(({ portrait, ...rest }) => rest),
+    supportingCharsInput: getSupportingChars(),
+  };
   try {
     if (state.savedStoryId) {
-      await api('PUT', `/api/library/${state.savedStoryId}`, { title: state.story.title, storyData: state.story });
+      await api('PUT', `/api/library/${state.savedStoryId}`, { title: state.story.title, storyData: storyDataWithChar });
     } else {
       const res = await api('POST', '/api/library', {
         title: state.story.title,
         language: getSelected('lang-pills') || 'English',
-        tone: getSelected('tone-pills') || 'Gentle',
+        tone: getTone(),
         ageRange: getSelected('age-pills') || '4-6',
         characterName: state.character?.name,
         pageCount: state.story.pages?.length,
-        storyData: state.story,
+        storyData: storyDataWithChar,
       });
       state.savedStoryId = res.id;
     }
@@ -2133,12 +2865,102 @@ async function submitCompile(emailPDF) {
 // ═══════════════════════════════════════════════════════════════
 function switchTab(name) {
   document.querySelectorAll('.tab-btn').forEach((b, i) => {
-    const names = ['story','prompts','character-card','discussion','library'];
+    const names = ['story','characters','character-card','discussion','library'];
     b.classList.toggle('active', names[i] === name);
   });
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
   document.getElementById(`tab-${name}`).classList.add('active');
   if (name === 'library') loadLibrary();
+  if (name === 'characters') renderCharacters();
+}
+
+async function openStoryFromLibrary(id) {
+  const interval = showLoading('Bino-load ang kwento...');
+  try {
+    const data = await api('GET', `/api/library/${id}`);
+    state.story = data.storyData;
+    state.savedStoryId = id;
+    // Restore character — prefer the embedded copy, fall back to minimal stub
+    state.character = data.storyData?.character || {
+      name: data.character_name || 'Character',
+      type: '', personalityDescription: '', appearance: '',
+      catchphrase: '', funFact: '', stats: null, designPrompt: '',
+    };
+    // Restore characters array (portraits), font, and storyParams
+    state.characters = data.storyData?.characters || [];
+    state.storyFont = data.storyData?.storyFont || 'Baloo 2';
+    // Rebuild a minimal storyParams so the settings panel renders on reopen
+    if (!state.storyParams) {
+      const sd = data.storyData || {};
+      state.storyParams = {
+        tone: sd.tone || data.tone || 'Gentle',
+        setting: sd.setting || '',
+        settingFilipino: sd.settingFilipino || '',
+        ageRange: sd.ageRange || data.age_range || '4-6',
+        pageCount: sd.pages?.length || 10,
+        valuesCategory: sd.valuesCategory || '',
+        specificLesson: sd.specificLesson || '',
+        causeEffectEnabled: sd.causeEffectEnabled || false,
+        lang: sd.language || data.language || 'English',
+        isBilingual: sd.isBilingual || false,
+        supportingChars: sd.supportingCharsInput || [],
+        pet: sd.pet || null,
+        illustrationStyle: sd.illustrationStyle || '',
+      };
+    }
+    // Restore supporting chars UI from saved data if available
+    const savedSupChars = data.storyData?.supportingCharsInput || [];
+    if (savedSupChars.length) {
+      const list = document.getElementById('supporting-chars-list');
+      if (list) { list.innerHTML = ''; savedSupChars.forEach(s => addSupportingChar(s.name, s.relationship, s.gender)); }
+    }
+    hideLoading(interval);
+    // Navigate to step 4 (book view)
+    document.getElementById('wizard-progress-bar').classList.remove('hidden');
+    document.querySelectorAll('.wizard-view').forEach(v => v.classList.remove('active'));
+    document.getElementById('view-step4').classList.add('active');
+    state.currentStep = 4;
+    updateProgressBar(4);
+    window.scrollTo(0, 0);
+    renderBook();
+    // Restore any previously generated images
+    if (data.images?.length) {
+      data.images.forEach(img => {
+        if (!img.image_data) return;
+        const imageUrl = img.image_data.startsWith('data:') ? img.image_data : `data:image/png;base64,${img.image_data}`;
+
+        // Negative page_index = character portrait
+        if (img.page_index < 0) {
+          const charId = pageIndexToCharId(img.page_index);
+          if (charId) {
+            const charIdx = state.characters.findIndex(c => c.id === charId);
+            if (charIdx !== -1) state.characters[charIdx].portrait = imageUrl;
+          }
+          return;
+        }
+
+        // Normal page image
+        const el = document.getElementById(`img-result-${img.page_index}`);
+        if (!el) return;
+        el.innerHTML = '';
+        const imgEl = document.createElement('img');
+        imgEl.style.cssText = 'max-width:100%;border-radius:1rem;margin-top:8px;display:block;';
+        imgEl.src = imageUrl;
+        el.appendChild(imgEl);
+        const regenBtn = document.createElement('button');
+        regenBtn.className = 'btn-ghost mt-2';
+        regenBtn.style.cssText = 'font-size:12px;padding:5px 12px;';
+        regenBtn.textContent = '🔄 Regenerate';
+        regenBtn.onclick = () => generatePageImage(img.page_index);
+        el.appendChild(regenBtn);
+      });
+    }
+    // Re-render characters tab with restored portraits
+    renderCharacters();
+  } catch (err) {
+    hideLoading(interval);
+    alert('Could not load story: ' + err.message);
+  }
 }
 
 async function loadLibrary() {
@@ -2165,7 +2987,8 @@ async function loadLibrary() {
             <span>${new Date(s.created_at).toLocaleDateString('en-PH')}</span>
           </div>
         </div>
-        <div style="display:flex;gap:8px;">
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button class="btn-primary" style="font-size:13px;padding:6px 16px;" onclick="openStoryFromLibrary(${s.id})">📖 Open</button>
           <button class="btn-ghost" style="font-size:13px;padding:6px 14px;" onclick="deleteStory(${s.id},this)">🗑️</button>
         </div>
       </div>`).join('');
@@ -2227,9 +3050,12 @@ async function loadDashboardStories() {
               </div>
               <div class="flex justify-between items-center pt-3 border-t border-surface-container">
                 <span class="text-xs text-on-surface-variant font-label">${new Date(s.created_at).toLocaleDateString('en-PH')}</span>
-                <button class="text-error hover:opacity-70 transition-opacity text-sm" onclick="deleteStory(${s.id},this)">
-                  <span class="material-symbols-outlined text-base">delete</span>
-                </button>
+                <div class="flex gap-2">
+                  <button class="btn-primary" style="font-size:12px;padding:5px 14px;" onclick="openStoryFromLibrary(${s.id})">📖 Open</button>
+                  <button class="text-error hover:opacity-70 transition-opacity text-sm" onclick="deleteStory(${s.id},this)">
+                    <span class="material-symbols-outlined text-base">delete</span>
+                  </button>
+                </div>
               </div>
             </div>
           </div>`).join('')}
@@ -2401,15 +3227,23 @@ async function loadAdminAISettings() {
 
   const renderProviders = (feature, providers) => {
     const featureNames = { text: '📝 Story Text AI', image: '🎨 Image Generation AI', compile: '📚 Book Compilation AI' };
+    const providerLabel = p => {
+      if (p.provider === 'ollama') return 'OLLAMA (Local)';
+      if (p.provider === 'ollama_cloud') return 'OLLAMA (Cloud)';
+      if (feature === 'image' && p.provider === 'openrouter') return 'OPENROUTER (Future)';
+      return escapeHtml(p.provider).toUpperCase();
+    };
     return `<div class="admin-card">
       <h3>${featureNames[feature]}</h3>
       ${providers.map(p => `
         <div class="provider-card ${p.is_active ? 'active-provider' : ''}">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-            <strong style="font-family:'Plus Jakarta Sans',sans-serif;font-size:15px;font-weight:800;">${escapeHtml(p.provider).toUpperCase()}</strong>
+            <strong style="font-family:'Plus Jakarta Sans',sans-serif;font-size:15px;font-weight:800;">${providerLabel(p)}</strong>
             ${p.is_active ? '<span class="badge badge-green">ACTIVE</span>' :
               `<button class="btn-ghost" style="font-size:12px;padding:4px 10px;" onclick="switchProvider('${escapeHtml(feature)}','${escapeHtml(p.provider)}')">Set Active</button>`}
           </div>
+          ${p.provider === 'ollama' ? `<p style="font-size:12px;color:#888;margin-bottom:4px;">🌐 Host: ${escapeHtml((p.extra_config && p.extra_config.host) || 'http://localhost:11434')}</p>` : ''}
+          ${feature === 'image' && p.provider === 'openrouter' ? `<p style="font-size:12px;color:#b05a00;margin-bottom:4px;">⏳ Image generation via OpenRouter is reserved for a future release.</p>` : ''}
           <p style="font-size:13px;color:#676804;margin-bottom:4px;">🔑 Key: ${escapeHtml(p.api_key_hint || 'Not set')} | 🤖 Model: ${escapeHtml(p.model)}</p>
           <p style="font-size:13px;color:#676804;margin-bottom:10px;">
             ${p.last_test_ok === true ? '✅' : p.last_test_ok === false ? '❌' : '⚪'}
@@ -2417,8 +3251,9 @@ async function loadAdminAISettings() {
           </p>
           <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
             <button class="copy-btn" onclick="testAIProvider('${escapeHtml(feature)}','${escapeHtml(p.provider)}','${escapeHtml(p.model)}')">▶ Test</button>
-            <button class="copy-btn" onclick="promptUpdateKey('${escapeHtml(feature)}','${escapeHtml(p.provider)}')">✏️ Update Key</button>
+            ${p.provider !== 'ollama' ? `<button class="copy-btn" onclick="promptUpdateKey('${escapeHtml(feature)}','${escapeHtml(p.provider)}')">✏️ Update Key</button>` : ''}
             <button class="copy-btn" onclick="promptUpdateModel('${escapeHtml(feature)}','${escapeHtml(p.provider)}','${escapeHtml(p.model)}')">🤖 Change Model</button>
+            ${p.provider === 'ollama' ? `<button class="copy-btn" onclick="promptUpdateOllamaHost('${escapeHtml(feature)}','${escapeHtml(p.provider)}','${escapeHtml((p.extra_config && p.extra_config.host) || 'http://localhost:11434')}')">🔗 Set URL</button>` : ''}
           </div>
         </div>`).join('')}
     </div>`;
@@ -2448,6 +3283,14 @@ async function promptUpdateKey(feature, provider) {
   if (!key) return;
   const data = await adminApi('PUT', `/api/admin/ai-settings/${feature}/${provider}`, { apiKey: key });
   alert(`${data.ok ? '✅ Key updated.' : '❌ Failed.'} Test: ${data.testResult?.message}`);
+  loadAdminAISettings();
+}
+
+async function promptUpdateOllamaHost(feature, provider, currentHost) {
+  const host = prompt('Enter Ollama server URL:', currentHost || 'http://localhost:11434');
+  if (!host) return;
+  const data = await adminApi('PUT', `/api/admin/ai-settings/${feature}/${provider}`, { extraConfig: { host } });
+  alert(data.ok ? '✅ Ollama URL updated.' : `❌ Failed: ${data.error || 'Unknown error'}`);
   loadAdminAISettings();
 }
 
