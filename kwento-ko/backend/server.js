@@ -860,17 +860,11 @@ class AIProviderFactory {
       const { fal } = require('@fal-ai/client');
       fal.config({ credentials: config.apiKey });
 
-      let falModel = config.model;
-      const falInput = { prompt: portraitPrompt, image_size: 'portrait_4_3', num_inference_steps: 50, guidance_scale: 7.5 };
-
-      // When character portraits are provided, use them as IP-Adapter references.
-      // If ref has a .url (fal CDN URL from a previous generation), use it directly.
-      // Otherwise upload base64 to fal storage to get a URL.
-      // Seed locking: pass seed when provided so all pages use the same style fingerprint
-      if (seed !== null) falInput.seed = seed;
-
-      // Single focal IP adapter: only the primary/focal character (first valid ref), scale 0.6
       const validRefs = (referenceImages || []).filter(r => r?.url || r?.base64);
+
+      // When a character portrait is available, use fal-ai/consistent-character which is
+      // purpose-built for generating the same character identity across different scenes.
+      // Fall back to the configured model (flux-general etc.) when no portrait is provided.
       if (validRefs.length > 0) {
         const focalRef = validRefs[0];
         try {
@@ -880,14 +874,31 @@ class AIProviderFactory {
             const blob = new Blob([buf], { type: focalRef.mimeType || 'image/jpeg' });
             refUrl = await fal.storage.upload(blob);
           }
-          falModel = 'fal-ai/flux-general';
-          falInput.ip_adapter = [{ image_url: refUrl, scale: 0.85 }];
-        } catch (uploadErr) {
-          console.warn(`fal.ai portrait reference failed for ${focalRef.name || 'unknown'}: ${uploadErr.message}`);
+          const ccInput = {
+            image_url: refUrl,
+            prompt: portraitPrompt,
+            negative_prompt: 'blurry, low quality, distorted face, multiple characters, text, watermark',
+            num_images: 1,
+          };
+          if (seed !== null) ccInput.randomize_seed = false, ccInput.seed = seed;
+          const ccResult = await fal.run('fal-ai/consistent-character', { input: ccInput });
+          const ccImages = ccResult.data?.images || ccResult.images;
+          const ccUrl = ccImages?.[0]?.url;
+          if (!ccUrl) throw new Error('consistent-character returned no image');
+          const ccSeed = ccResult.data?.seed ?? ccResult.seed ?? null;
+          const ccResp = await fetch(ccUrl);
+          const ccBuf = await ccResp.arrayBuffer();
+          return { base64: Buffer.from(ccBuf).toString('base64'), sourceUrl: ccUrl, seed: ccSeed };
+        } catch (ccErr) {
+          console.warn(`fal.ai consistent-character failed, falling back to base model: ${ccErr.message}`);
+          // Fall through to base model below
         }
       }
 
-      const result = await fal.run(falModel, { input: falInput });
+      // No portrait reference (or consistent-character failed): use configured model directly
+      const falInput = { prompt: portraitPrompt, image_size: 'portrait_4_3', num_inference_steps: 50, guidance_scale: 7.5 };
+      if (seed !== null) falInput.seed = seed;
+      const result = await fal.run(config.model, { input: falInput });
       const falImages = result.data?.images || result.images;
       const imgUrl = falImages?.[0]?.url;
       if (!imgUrl) throw new Error(`fal.ai returned no image URL. Keys: ${JSON.stringify(Object.keys(result || {}))}`);
