@@ -878,13 +878,13 @@ class AIProviderFactory {
           const pmPrompt = `img ${portraitPrompt}`;
           const pmInput = {
             image_url: refUrl,
+            image_urls: [refUrl],
             prompt: pmPrompt,
             negative_prompt: 'blurry, low quality, distorted face, multiple characters, text, watermark, nsfw',
-            num_images: 1,
-            guidance_scale: 7.5,
-            style_name: 'Photographic (Default)',
+            guidance_scale: 5,
           };
           if (seed !== null) pmInput.seed = seed;
+          console.log('fal.ai photomaker: calling with refUrl', refUrl?.slice(0, 60));
           const pmResult = await fal.run('fal-ai/photomaker', { input: pmInput });
           const pmImages = pmResult.data?.images || pmResult.images;
           const pmUrl = pmImages?.[0]?.url;
@@ -894,13 +894,13 @@ class AIProviderFactory {
           const pmBuf = await pmResp.arrayBuffer();
           return { base64: Buffer.from(pmBuf).toString('base64'), sourceUrl: pmUrl, seed: pmSeed };
         } catch (pmErr) {
-          console.warn(`fal.ai photomaker failed, falling back to base model: ${pmErr.message}`);
+          console.error(`fal.ai photomaker failed (falling back to base model): ${pmErr.message}`);
           // Fall through to base model below
         }
       }
 
       // No portrait reference (or consistent-character failed): use configured model directly
-      const falInput = { prompt: portraitPrompt, image_size: 'portrait_4_3', num_inference_steps: 50, guidance_scale: 7.5 };
+      const falInput = { prompt: portraitPrompt, image_size: 'portrait_4_3', num_inference_steps: 25, guidance_scale: 7.5 };
       if (seed !== null) falInput.seed = seed;
       const result = await fal.run(config.model, { input: falInput });
       const falImages = result.data?.images || result.images;
