@@ -862,9 +862,9 @@ class AIProviderFactory {
 
       const validRefs = (referenceImages || []).filter(r => r?.url || r?.base64);
 
-      // When a character portrait is available, use fal-ai/consistent-character which is
-      // purpose-built for generating the same character identity across different scenes.
-      // Fall back to the configured model (flux-general etc.) when no portrait is provided.
+      // When a character portrait is available, use fal-ai/photomaker which preserves
+      // face/character identity from a reference image across different scenes.
+      // Fall back to the configured model when no portrait is provided or if it fails.
       if (validRefs.length > 0) {
         const focalRef = validRefs[0];
         try {
@@ -874,23 +874,27 @@ class AIProviderFactory {
             const blob = new Blob([buf], { type: focalRef.mimeType || 'image/jpeg' });
             refUrl = await fal.storage.upload(blob);
           }
-          const ccInput = {
+          // PhotoMaker requires "img" trigger word in the prompt to activate identity preservation
+          const pmPrompt = `img ${portraitPrompt}`;
+          const pmInput = {
             image_url: refUrl,
-            prompt: portraitPrompt,
-            negative_prompt: 'blurry, low quality, distorted face, multiple characters, text, watermark',
+            prompt: pmPrompt,
+            negative_prompt: 'blurry, low quality, distorted face, multiple characters, text, watermark, nsfw',
             num_images: 1,
+            guidance_scale: 7.5,
+            style_name: 'Photographic (Default)',
           };
-          if (seed !== null) ccInput.randomize_seed = false, ccInput.seed = seed;
-          const ccResult = await fal.run('fal-ai/consistent-character', { input: ccInput });
-          const ccImages = ccResult.data?.images || ccResult.images;
-          const ccUrl = ccImages?.[0]?.url;
-          if (!ccUrl) throw new Error('consistent-character returned no image');
-          const ccSeed = ccResult.data?.seed ?? ccResult.seed ?? null;
-          const ccResp = await fetch(ccUrl);
-          const ccBuf = await ccResp.arrayBuffer();
-          return { base64: Buffer.from(ccBuf).toString('base64'), sourceUrl: ccUrl, seed: ccSeed };
-        } catch (ccErr) {
-          console.warn(`fal.ai consistent-character failed, falling back to base model: ${ccErr.message}`);
+          if (seed !== null) pmInput.seed = seed;
+          const pmResult = await fal.run('fal-ai/photomaker', { input: pmInput });
+          const pmImages = pmResult.data?.images || pmResult.images;
+          const pmUrl = pmImages?.[0]?.url;
+          if (!pmUrl) throw new Error('photomaker returned no image');
+          const pmSeed = pmResult.data?.seed ?? pmResult.seed ?? null;
+          const pmResp = await fetch(pmUrl);
+          const pmBuf = await pmResp.arrayBuffer();
+          return { base64: Buffer.from(pmBuf).toString('base64'), sourceUrl: pmUrl, seed: pmSeed };
+        } catch (pmErr) {
+          console.warn(`fal.ai photomaker failed, falling back to base model: ${pmErr.message}`);
           // Fall through to base model below
         }
       }
@@ -1079,7 +1083,7 @@ Output valid JSON only. No markdown fences.`;
 function buildStoryUserPrompt({ character, tone, setting, settingFilipino, ageRange, pageCount, valuesCategory, specificLesson, causeEffectEnabled, language, isBilingual, supportingChars, pet, illustrationStyle }) {
   const styleDesc = illustrationStyle || 'whimsical digital illustration, soft rounded shapes, flat pastel color palette, subtle traditional watercolor texture, children\'s book illustration style, warm and friendly atmosphere';
   const supportingDesc = (supportingChars || []).length
-    ? '\nSupporting characters:\n' + supportingChars.map(s => `- ${s.name}, ${s.relationship}, ${s.gender || 'unspecified gender'}`).join('\n')
+    ? '\nSupporting characters:\n' + supportingChars.map(s => `- ${s.name}, ${s.relationship}, ${s.gender || 'unspecified gender'}${s.age ? ', age ' + s.age : ''}`).join('\n')
     : '';
   const petDesc = pet?.name ? `\nPet: ${pet.name} the ${pet.type}` : '';
 

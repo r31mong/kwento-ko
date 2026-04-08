@@ -1752,6 +1752,7 @@ function getSupportingChars() {
     name: card.querySelector('.sc-name').value.trim(),
     relationship: card.querySelector('.sc-rel').value.trim(),
     gender: card.querySelector('.sc-gender-pill.active')?.dataset.gender || 'Other',
+    age: card.querySelector('.sc-age')?.value.trim() || '',
   })).filter(s => s.name);
 }
 
@@ -1773,7 +1774,7 @@ function getIllusStyle() {
   return sel || '';
 }
 
-function addSupportingChar(name = '', relationship = '', gender = 'Girl') {
+function addSupportingChar(name = '', relationship = '', gender = 'Girl', age = '') {
   const list = document.getElementById('supporting-chars-list');
   const card = document.createElement('div');
   card.className = 'sc-card sc-row';
@@ -1787,6 +1788,10 @@ function addSupportingChar(name = '', relationship = '', gender = 'Girl') {
       <div>
         <div class="sc-field-label">Role / Relationship</div>
         <input class="sc-rel" type="text" placeholder="e.g. Mother, Best Friend" value="${escapeHtml(relationship)}" />
+      </div>
+      <div>
+        <div class="sc-field-label">Age <span style="font-weight:400;opacity:0.7;">(optional)</span></div>
+        <input class="sc-age" type="text" placeholder="e.g. 35, elderly, toddler" value="${escapeHtml(age)}" style="width:100%;" />
       </div>
     </div>
     <div style="margin-top:8px;">
@@ -2912,7 +2917,7 @@ async function openStoryFromLibrary(id) {
     const savedSupChars = data.storyData?.supportingCharsInput || [];
     if (savedSupChars.length) {
       const list = document.getElementById('supporting-chars-list');
-      if (list) { list.innerHTML = ''; savedSupChars.forEach(s => addSupportingChar(s.name, s.relationship, s.gender)); }
+      if (list) { list.innerHTML = ''; savedSupChars.forEach(s => addSupportingChar(s.name, s.relationship, s.gender, s.age || '')); }
     }
     hideLoading(interval);
     // Navigate to step 4 (book view)
